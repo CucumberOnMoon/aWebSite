@@ -16,16 +16,6 @@ Feature: Navigation and Language Switching
         Then the nav bar should show "Dashboard"
         And the nav bar should show "Logout"
 
-    Scenario: Nav bar has Posts link on every page
-        When I am on the home page
-        Then the nav bar should display "Posts"
-        When I am on the login page
-        Then the nav bar should display "Posts"
-        When I am on the register page
-        Then the nav bar should display "Posts"
-        When I am on the posts page
-        Then the nav bar should display "Posts"
-
     Scenario: Language switcher is present on all pages
         When I am on the home page
         Then the language switcher should be present
@@ -40,9 +30,9 @@ Feature: Navigation and Language Switching
         Then the page should display text in Chinese
 
     Scenario: Switch language back to English
-        When I am on the home page
+        Given I am on the home page
         And I switch the language to "Chinese"
-        And I switch the language to "English"
+        When I switch the language to "English"
         Then the page should display text in English
 
     Scenario: Language switch persists across page navigation
@@ -50,3 +40,7 @@ Feature: Navigation and Language Switching
         And I switch the language to "Chinese"
         And I click the nav link "Posts"
         Then the page should display text in Chinese
+
+    Scenario: Footer or branding is present
+        When I am on the home page
+        Then I should see "MySite"

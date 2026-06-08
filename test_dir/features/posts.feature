@@ -23,7 +23,7 @@ Feature: Blog Posts
         And I click the post title "Detail Test Post"
         Then I should see "Content of Detail Test Post."
 
-    Scenario: Multiple posts appear in the list
+    Scenario: Multiple posts appear in order
         Given I am logged in
         And there is a post titled "Alpha Post"
         And there is a post titled "Beta Post"
@@ -38,3 +38,9 @@ Feature: Blog Posts
         Then the page title should contain "Posts"
         When I am on the create post page
         Then I should be redirected to the login page
+
+    Scenario: Post list supports pagination
+        Given I am logged in
+        And there is a post titled "Old Post"
+        When I am on the posts page
+        Then I should see pagination controls

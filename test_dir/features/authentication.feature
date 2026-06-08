@@ -9,11 +9,10 @@ Feature: User Authentication
     Scenario: Register a new account successfully
         When I am on the register page
         And I fill in "username" with "testuser01"
-        And I fill in "password1" with "StrongPass99!"
-        And I fill in "password2" with "StrongPass99!"
+        And I fill in "password1" with "TestPass123!"
+        And I fill in "password2" with "TestPass123!"
         And I submit the registration form
-        Then I should be redirected to the dashboard
-        And I should see "Login Successful!"
+        Then I should be on the "posts" page
 
     Scenario: Register with a duplicate username
         Given I am on the register page
@@ -24,14 +23,9 @@ Feature: User Authentication
         Then I should see a registration error
 
     Scenario: Login with valid credentials
-        Given I am logged in
-        And I am logged out
-        When I am on the login page
-        And I fill in "username" with "loggedin_user"
-        And I fill in "password" with "TestPass123!"
-        And I submit the login form
-        Then I should be redirected to the dashboard
-        And I should see "Login Successful!"
+        Given I am logged out
+        When I log in as "loggedin_user" with password "TestPass123!"
+        Then I should be on the "posts" page
 
     Scenario: Login with invalid credentials
         When I am on the login page

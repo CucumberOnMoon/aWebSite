@@ -1,17 +1,30 @@
-"""Scale OCR — v5: clean regex, handle 9→9.9 case in specific fields."""
+"""
+Scale OCR — v5: clean regex, handle 9→9.9 case in specific fields.
+Windows-only OCR via winrt; falls through on other platforms.
+"""
 
 import asyncio, re, json, io, os
-import winrt.windows.foundation.collections  # noqa: F401
-from winrt.windows.media.ocr import OcrEngine
-from winrt.windows.globalization import Language
-from winrt.windows.graphics.imaging import BitmapDecoder
-from winrt.windows.storage.streams import InMemoryRandomAccessStream, DataWriter
+
+# winrt is Windows-only — import lazily inside the function
+_winrt_available = False
+try:
+    import winrt.windows.foundation.collections  # noqa: F401
+    from winrt.windows.media.ocr import OcrEngine
+    from winrt.windows.globalization import Language
+    from winrt.windows.graphics.imaging import BitmapDecoder
+    from winrt.windows.storage.streams import InMemoryRandomAccessStream, DataWriter
+    _winrt_available = True
+except ImportError:
+    _winrt_available = False
+
 from PIL import Image
 
 _ocr_engine = None
 
 def _get_ocr():
     global _ocr_engine
+    if not _winrt_available:
+        raise ImportError("winrt not available (Windows-only OCR)")
     if _ocr_engine is None:
         ocr = OcrEngine.try_create_from_language(Language("zh-CN"))
         ocr = ocr or OcrEngine()

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体重测量数据</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Highcharts - bootcdn works well in China -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/highcharts/11.4.8/highcharts.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/highcharts/11.4.8/highcharts-more.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/highcharts/11.4.8/modules/exporting.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/highcharts/11.4.8/modules/accessibility.min.js"></script>
+    <style>
+        body { background: #f5f5f5; color: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .weight-container { margin: 20px auto; padding: 0 15px; max-width: 1400px; }
+        .weight-container h1 { text-align: center; color: #1a1a2e; margin-bottom: 20px; }
+        
+        .chart-wrap {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .chart-wrap h2 { font-size: 16px; color: #1a1a2e; margin-bottom: 15px; text-align: center; }
+        #weightChart { width: 100%; height: 500px; }
+        
+        .weight-table { border-collapse: collapse; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .weight-table th { background: #1a1a2e; color: #fff; padding: 12px 8px; font-size: 13px; text-align: center; white-space: nowrap; font-weight: 600; }
+        .weight-table td { padding: 10px 8px; text-align: center; font-size: 13px; color: #1a1a2e; border-bottom: 1px solid #ddd; white-space: nowrap; font-weight: 500; }
+        .weight-table td strong { color: #e63946; font-weight: 700; }
+        .weight-table tr:hover { background: #f0f7ff; }
+        .weight-table .label-row { background: #e8f0fe; font-weight: bold; }
+        .weight-table .label-row td { color: #4a90d9; font-size: 12px; padding: 6px 8px; }
+        .nav-back { display: inline-block; margin: 10px 0 20px; color: #4a90d9; text-decoration: none; font-size: 14px; }
+        .nav-back:hover { text-decoration: underline; }
+        .change-up { color: #e74c3c; }
+        .change-down { color: #27ae60; }
+        .change-none { color: #999; }
+        .no-data { text-align: center; padding: 40px; color: #999; font-size: 16px; }
+        .summary-bar { text-align: center; margin-bottom: 15px; color: #666; font-size: 14px; }
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .del-btn {
+            background: #ff4444; color: #fff; border: none; border-radius: 4px;
+            width: 28px; height: 28px; font-size: 14px; cursor: pointer;
+            line-height: 28px; padding: 0; transition: background 0.2s;
+        }
+        .del-btn:hover { background: #cc0000; }
+        .del-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        @media (max-width: 768px) {
+            .weight-table th, .weight-table td { font-size: 11px; padding: 6px 4px; }
+            #weightChart { height: 350px; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/">{% trans "Home" %}</a>
+                <a href="/weight-data/">体重数据</a>
+                <div class="nav-right">
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                        <a href="/users/">{% trans "Manage Users" %}</a>
+                        <a href="/success/">{% trans "Dashboard" %}</a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <a href="/logout/">{% trans "Logout" %}</a>
+                    {% else %}
+                        <a href="/login/">{% trans "Login" %}</a>
+                    {% endif %}
+                    {% include "accounts/language_switcher.html" %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="weight-container">
+        <a href="/" class="nav-back">&larr; {% trans "Back to Home" %}</a>
+        <h1>📊 体重测量数据</h1>
+
+        {% if not measurements %}
+            <p class="no-data">暂无体重测量数据</p>
+        {% else %}
+            <p class="summary-bar">共 <strong>{{ measurements|length }}</strong> 条记录</p>
+
+            <!-- Upload Section -->
+            <div style="text-align:center; margin-bottom:15px;">
+                <label for="weightUpload" style="display:inline-flex;align-items:center;gap:8px;padding:10px 24px;background:#e63946;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(230,57,70,0.3);transition:opacity 0.2s;" onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">
+                    📷 上传体脂秤截图分析
+                    <input id="weightUpload" type="file" accept="image/*" style="display:none" onchange="handleUpload(this)">
+                </label>
+                <div id="uploadStatus" style="display:none;margin-top:10px;font-size:13px;color:#666;"></div>
+            </div>
+
+            <div class="chart-wrap">
+                <h2>📈 体重变化趋势</h2>
+                <div id="weightChart"></div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="weight-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">操作</th>
+                            <th>测量时间</th>
+                            <th>体重(斤)</th>
+                            <th>BMI</th>
+                            <th>体脂率(%)</th>
+                            <th>体脂得分</th>
+                            <th>骨骼肌(斤)</th>
+                            <th>内脏脂肪</th>
+                            <th>四肢骨骼肌指数</th>
+                            <th>腰臀比</th>
+                            <th>水分率(%)</th>
+                            <th>蛋白质(%)</th>
+                            <th>骨盐量(斤)</th>
+                            <th>去脂体重(斤)</th>
+                            <th>基础代谢</th>
+                            <th>身体年龄</th>
+                            <th>心率</th>
+                            <th>体型</th>
+                            <th>形态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in measurements %}
+                        <tr>
+                            <td><button class="del-btn" data-id="{{ m.id }}" title="删除">✕</button></td>
+                            <td>{{ m.measured_at|date:"m/d H:i" }}</td>
+                            <td><strong>{{ m.weight_jin }}</strong></td>
+                            <td>{{ m.bmi }}</td>
+                            <td>{{ m.body_fat_pct }}%</td>
+                            <td>{{ m.body_fat_score|default:"-" }}</td>
+                            <td>{{ m.skeletal_muscle_jin }}</td>
+                            <td>{{ m.visceral_fat_level }}</td>
+                            <td>{{ m.arms_legs_muscle_index|default:"-" }}</td>
+                            <td>{{ m.waist_hip_ratio|default:"-" }}</td>
+                            <td>{{ m.body_water_pct }}%</td>
+                            <td>{{ m.protein_pct }}%</td>
+                            <td>{{ m.bone_mineral_jin }}</td>
+                            <td>{{ m.fat_free_mass_jin }}</td>
+                            <td>{{ m.basal_metabolism_kcal }}</td>
+                            <td>{{ m.body_age }}</td>
+                            <td>{{ m.heart_rate }}</td>
+                            <td>{{ m.body_type|default:"-" }}</td>
+                            <td>{{ m.body_shape|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+
+{% if measurements %}
+<script>
+// Chart data from Django template
+const rawData = [
+    {% for m in measurements reversed %}
+    {
+        date: "{{ m.measured_at|date:'m/d' }}",
+        dateFull: "{{ m.measured_at|date:'Y-m-d H:i' }}",
+        weight: {{ m.weight_jin|default:'null' }},
+        bmi: {{ m.bmi|default:'null' }},
+        bodyFat: {{ m.body_fat_pct|default:'null' }},
+        bodyFatScore: {{ m.body_fat_score|default:'null' }},
+        skeletalMuscle: {{ m.skeletal_muscle_jin|default:'null' }},
+        visceralFat: {{ m.visceral_fat_level|default:'null' }},
+        muscleIndex: {{ m.arms_legs_muscle_index|default:'null' }},
+        waistHip: {{ m.waist_hip_ratio|default:'null' }},
+        water: {{ m.body_water_pct|default:'null' }},
+        protein: {{ m.protein_pct|default:'null' }},
+        boneMineral: {{ m.bone_mineral_jin|default:'null' }},
+        fatFreeMass: {{ m.fat_free_mass_jin|default:'null' }},
+        basalMet: {{ m.basal_metabolism_kcal|default:'null' }},
+        bodyAge: {{ m.body_age|default:'null' }},
+        heartRate: {{ m.heart_rate|default:'null' }},
+    },
+    {% endfor %}
+];
+
+const categories = rawData.map(d => d.date);
+const tooltipDate = rawData.map(d => d.dateFull);
+
+// Color palette
+const colors = {
+    weight:         { c: '#e63946', name: '体重(斤)' },
+    fatFreeMass:    { c: '#f4a261', name: '去脂体重(斤)' },
+    skeletalMuscle: { c: '#e9c46a', name: '骨骼肌(斤)' },
+    bmi:            { c: '#457b9d', name: 'BMI' },
+    bodyFat:        { c: '#2a9d8f', name: '体脂率(%)' },
+    visceralFat:    { c: '#e76f51', name: '内脏脂肪' },
+    water:          { c: '#8ac926', name: '水分率(%)' },
+    protein:        { c: '#ff595e', name: '蛋白质(%)' },
+    bodyAge:        { c: '#6a4c93', name: '身体年龄' },
+    heartRate:      { c: '#1982c4', name: '心率' },
+    basalMet:       { c: '#ffca3a', name: '基础代谢' },
+    bodyFatScore:   { c: '#8daa9d', name: '体脂得分' },
+    muscleIndex:    { c: '#bb8fce', name: '四肢骨骼肌指数' },
+    waistHip:       { c: '#85c1e9', name: '腰臀比' },
+    boneMineral:    { c: '#f0b27a', name: '骨盐量(斤)' },
+};
+
+// Build tooltip formatter
+function tooltipHtml(points) {
+    let html = `<b>${tooltipDate[points[0].point.index]}</b><br/>`;
+    // Sort by series order for readability
+    const sorted = [...points].sort((a, b) => a.series.userOptions.order - b.series.userOptions.order);
+    sorted.forEach(p => {
+        // Skip weight bar (shown with its own tooltip)
+        if (p.series.name === '体重(斤)' && p.series.type === 'column') return;
+        let val = p.y;
+        // Format nicely
+        if (Number.isInteger(val)) val = val.toString();
+        else val = val.toFixed(p.series.userOptions.decimals || 1);
+        html += `<span style="color:${p.color}">●</span> ${p.series.name}: <b>${val}</b><br/>`;
+    });
+    return html;
+}
+
+// Build Highcharts config
+Highcharts.chart('weightChart', {
+    chart: {
+        zoomType: 'x',
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        style: { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+    },
+    title: { text: null },
+    credits: { enabled: false },
+    
+    xAxis: {
+        categories: categories,
+        labels: { style: { fontSize: '11px', fontWeight: 'bold' } },
+        crosshair: { width: 1, color: '#ddd', dashStyle: 'dot' },
+    },
+
+    yAxis: [{
+        // Axis 0: Weight (left)
+        title: { text: '体重(斤)', style: { color: colors.weight.c } },
+        labels: { format: '{value}', style: { color: colors.weight.c } },
+        opposite: false,
+        gridLineColor: '#eee',
+    }, {
+        // Axis 1: Body composition % (right)
+        title: { text: '体成分(%)', style: { color: '#666' } },
+        labels: { format: '{value}%', style: { color: '#666' } },
+        opposite: true,
+        gridLineWidth: 0,
+    }, {
+        // Axis 2: Scalar metrics (right, offset)
+        title: { text: '指标', style: { color: '#999' } },
+        labels: { style: { color: '#999' }, enabled: false },
+        opposite: true,
+        gridLineWidth: 0,
+        linkedTo: 0,
+    }],
+
+    tooltip: {
+        shared: true,
+        useHTML: true,
+        formatter: function() {
+            const pts = this.points || [];
+            if (pts.length === 0) return '';
+            const idx = pts[0].point.index;
+            let html = `<b>${tooltipDate[idx]}</b><br/>`;
+            
+            // Show weight first (always)
+            const weightPt = pts.find(p => p.series.name === '体重(斤)');
+            if (weightPt) {
+                html += `<span style="color:${colors.weight.c}">●</span> ${colors.weight.name}: <b>${weightPt.y.toFixed(1)}</b><br/>`;
+            }
+            
+            // All other series
+            const others = pts.filter(p => p.series.name !== '体重(斤)');
+            // Sort by absolute value descending for readability
+            others.sort((a, b) => Math.abs(b.y) - Math.abs(a.y));
+            others.forEach(p => {
+                let val = Number.isInteger(p.y) ? p.y : p.y.toFixed(p.series.userOptions.decimals || 1);
+                html += `<span style="color:${p.color}">●</span> ${p.series.name}: <b>${val}</b><br/>`;
+            });
+            
+            return html;
+        },
+    },
+
+    legend: {
+        align: 'center',
+        verticalAlign: 'bottom',
+        layout: 'horizontal',
+        itemStyle: { fontSize: '11px' },
+        itemDistance: 12,
+    },
+
+    plotOptions: {
+        column: {
+            grouping: false,
+            pointPadding: 0,
+            groupPadding: 0.1,
+            borderRadius: 3,
+        },
+        line: {
+            marker: { enabled: true, radius: 3, symbol: 'circle' },
+            lineWidth: 2,
+            connectNulls: false,
+            states: { hover: { lineWidth: 3 } },
+        },
+    },
+
+    series: [
+        // === COLUMN: Weight ===
+        {
+            name: '体重(斤)',
+            type: 'column',
+            yAxis: 0,
+            color: 'rgba(230,57,70,0.7)',
+            borderColor: '#e63946',
+            borderWidth: 1.5,
+            data: rawData.map(d => d.weight),
+            tooltip: { valueDecimals: 1, valueSuffix: ' 斤' },
+            order: 0,
+            pointPadding: 0.05,
+        },
+        // === LINE: Fat-Free Mass ===
+        {
+            name: '去脂体重(斤)',
+            type: 'line',
+            yAxis: 0,
+            color: colors.fatFreeMass.c,
+            data: rawData.map(d => d.fatFreeMass),
+            order: 1,
+            decimals: 1,
+            visible: false,
+        },
+        // === LINE: Skeletal Muscle ===
+        {
+            name: '骨骼肌(斤)',
+            type: 'line',
+            yAxis: 0,
+            color: colors.skeletalMuscle.c,
+            data: rawData.map(d => d.skeletalMuscle),
+            order: 2,
+            decimals: 1,
+            visible: false,
+        },
+        // === LINE: BMI ===
+        {
+            name: 'BMI',
+            type: 'line',
+            yAxis: 1,
+            color: colors.bmi.c,
+            data: rawData.map(d => d.bmi),
+            order: 3,
+            decimals: 1,
+        },
+        // === LINE: Body Fat % ===
+        {
+            name: '体脂率(%)',
+            type: 'line',
+            yAxis: 1,
+            color: colors.bodyFat.c,
+            data: rawData.map(d => d.bodyFat),
+            order: 4,
+            decimals: 1,
+        },
+        // === LINE: Body Water % ===
+        {
+            name: '水分率(%)',
+            type: 'line',
+            yAxis: 1,
+            color: colors.water.c,
+            data: rawData.map(d => d.water),
+            order: 5,
+            decimals: 1,
+            visible: false,
+        },
+        // === LINE: Protein % ===
+        {
+            name: '蛋白质(%)',
+            type: 'line',
+            yAxis: 1,
+            color: colors.protein.c,
+            data: rawData.map(d => d.protein),
+            order: 6,
+            decimals: 1,
+            visible: false,
+        },
+        // === LINE: Visceral Fat ===
+        {
+            name: '内脏脂肪',
+            type: 'line',
+            yAxis: 2,
+            color: colors.visceralFat.c,
+            data: rawData.map(d => d.visceralFat),
+            order: 7,
+            decimals: 1,
+        },
+        // === LINE: Heart Rate ===
+        {
+            name: '心率',
+            type: 'line',
+            yAxis: 2,
+            color: colors.heartRate.c,
+            data: rawData.map(d => d.heartRate),
+            order: 8,
+            decimals: 0,
+            visible: false,
+        },
+        // === LINE: Body Age ===
+        {
+            name: '身体年龄',
+            type: 'line',
+            yAxis: 2,
+            color: colors.bodyAge.c,
+            data: rawData.map(d => d.bodyAge),
+            order: 9,
+            decimals: 0,
+            visible: false,
+        },
+        // === LINE: Body Fat Score ===
+        {
+            name: '体脂得分',
+            type: 'line',
+            yAxis: 2,
+            color: colors.bodyFatScore.c,
+            data: rawData.map(d => d.bodyFatScore),
+            order: 10,
+            decimals: 0,
+            visible: false,
+        },
+        // === LINE: Basal Metabolism ===
+        {
+            name: '基础代谢',
+            type: 'line',
+            yAxis: 2,
+            color: colors.basalMet.c,
+            data: rawData.map(d => d.basalMet),
+            order: 11,
+            decimals: 0,
+            visible: false,
+        },
+        // === LINE: Limbs Muscle Index ===
+        {
+            name: '四肢骨骼肌指数',
+            type: 'line',
+            yAxis: 2,
+            color: colors.muscleIndex.c,
+            data: rawData.map(d => d.muscleIndex),
+            order: 12,
+            decimals: 1,
+            visible: false,
+        },
+        // === LINE: Waist-Hip Ratio ===
+        {
+            name: '腰臀比',
+            type: 'line',
+            yAxis: 2,
+            color: colors.waistHip.c,
+            data: rawData.map(d => d.waistHip),
+            order: 13,
+            decimals: 2,
+            visible: false,
+        },
+        // === LINE: Bone Mineral ===
+        {
+            name: '骨盐量(斤)',
+            type: 'line',
+            yAxis: 0,
+            color: colors.boneMineral.c,
+            data: rawData.map(d => d.boneMineral),
+            order: 14,
+            decimals: 2,
+            visible: false,
+        },
+    ],
+
+    responsive: {
+        rules: [{
+            condition: { maxWidth: 600 },
+            chartOptions: {
+                legend: { itemStyle: { fontSize: '10px' }, itemDistance: 8 },
+                yAxis: [{
+                    title: { style: { fontSize: '10px' } },
+                }],
+            }
+        }]
+    },
+});
+
+// ---- Delete handler ----
+document.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (!confirm('确定删除这条记录？')) return;
+        const id = this.dataset.id;
+        const row = this.closest('tr');
+        this.disabled = true;
+        this.textContent = '...';
+        fetch(`/weight-data/delete/${id}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token|escapejs }}' },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            } else {
+                alert('删除失败');
+                this.disabled = false;
+                this.textContent = 'X';
+            }
+        })
+        .catch(() => { alert('网络错误'); this.disabled = false; this.textContent = 'X'; });
+    });
+});
+
+// ---- Upload handler ----
+function handleUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const status = document.getElementById('uploadStatus');
+    status.style.display = 'block';
+    status.innerHTML = '⏳ 正在分析图片...';
+    status.style.color = '#666';
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    fetch('/weight-data/upload/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token|escapejs }}',
+        },
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        if (ok && data.success) {
+            status.innerHTML = `✅ ${data.date} 体重 ${data.weight_jin}斤 已录入！页面即将刷新...`;
+            status.style.color = '#27ae60';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            status.innerHTML = `❌ ${data.error || '分析失败，请重试'}`;
+            status.style.color = '#e63946';
+        }
+    })
+    .catch(e => {
+        status.innerHTML = '❌ 网络错误，请重试';
+        status.style.color = '#e63946';
+    });
+}
+</script>
+{% endif %}
+</body>
+</html>

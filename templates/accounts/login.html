@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Login" %} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                {% endif %}
+                <a href="/register/">{% trans "Register" %}</a>
+                {% include "accounts/language_switcher.html" %}
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="form-section">
+            <h2>{% trans "Login" %}</h2>
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="form-group">
+                    <label for="id_username">{% trans "Username" %}</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <span class="error-text">{{ form.username.errors.0 }}</span>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="id_password">{% trans "Password" %}</label>
+                    {{ form.password }}
+                    {% if form.password.errors %}
+                        <span class="error-text">{{ form.password.errors.0 }}</span>
+                    {% endif %}
+                </div>
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error">{{ form.non_field_errors.0 }}</div>
+                {% endif %}
+                <button type="submit" class="btn-primary btn-full">{% trans "Login" %}</button>
+            </form>
+            <p class="form-footer">{% trans "Don't have an account?" %} <a href="/register/">{% trans "Register here" %}</a>.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+</body>
+</html>

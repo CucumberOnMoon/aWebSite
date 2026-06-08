@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if edit_user %}{% trans "Edit User" %}{% else %}{% trans "Add User" %}{% endif %} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                <a href="/success/">{% trans "Dashboard" %}</a>
+                <a href="/users/">{% trans "Manage Users" %}</a>
+                <a href="/logout/">{% trans "Logout" %}</a>
+                {% include "accounts/language_switcher.html" %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="post-main">
+        <section class="post-form-section">
+            <h2>{% if edit_user %}{% trans "Edit User" %}{% else %}{% trans "Add User" %}{% endif %}</h2>
+
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="post" class="post-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_username">{% trans "Username" %}</label>
+                    <input type="text" id="id_username" name="username" maxlength="150" required
+                           value="{{ edit_user.username|default:'' }}"
+                           placeholder="{% trans 'Enter username' %}">
+                </div>
+                <div class="form-group">
+                    <label for="id_email">{% trans "Email" %}</label>
+                    <input type="email" id="id_email" name="email"
+                           value="{{ edit_user.email|default:'' }}"
+                           placeholder="{% trans 'Enter email (optional)' %}">
+                </div>
+                <div class="form-group">
+                    <label for="id_password1">{% trans "Password" %}{% if edit_user %} {% trans "(leave blank to keep unchanged)" %}{% endif %}</label>
+                    <input type="password" id="id_password1" name="password1"
+                           {% if not edit_user %}required{% endif %}
+                           placeholder="{% if edit_user %}{% trans 'New password (optional)' %}{% else %}{% trans 'Enter password' %}{% endif %}">
+                </div>
+                <div class="form-group">
+                    <label for="id_password2">{% trans "Confirm Password" %}</label>
+                    <input type="password" id="id_password2" name="password2"
+                           {% if not edit_user %}required{% endif %}
+                           placeholder="{% trans 'Confirm password' %}">
+                </div>
+                <div class="form-group">
+                    <label for="id_role">{% trans "Role" %}</label>
+                    <select id="id_role" name="role" class="form-select">
+                        <option value="user" {% if edit_profile.role == 'user' %}selected{% endif %}>{% trans "User" %}</option>
+                        <option value="admin" {% if edit_profile.role == 'admin' %}selected{% endif %}>{% trans "Admin" %}</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        {% if edit_user %}{% trans "Save Changes" %}{% else %}{% trans "Create User" %}{% endif %}
+                    </button>
+                    <a href="/users/" class="btn-secondary">{% trans "Cancel" %}</a>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+</body>
+</html>

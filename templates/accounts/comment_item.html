@@ -1,0 +1,62 @@
+{% load i18n %}
+<div class="comment-item {% if comment.parent %}comment-reply{% endif %}">
+    <div class="comment-meta">
+        <strong>{{ comment.author.username }}</strong>
+        {% if comment.parent %}
+            <span class="reply-to">{% trans "replied to" %} {{ comment.parent.author.username }}</span>
+        {% endif %}
+        <span class="comment-time"><time class="utc-time" datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:'Y-m-d H:i' }}</time></span>
+    </div>
+
+    {% if comment.content %}
+    <div class="comment-content">{{ comment.content|linebreaks }}</div>
+    {% endif %}
+
+    {% if comment.has_audio %}
+    <div class="comment-audio">
+        <audio controls preload="metadata">
+            <source src="{{ comment.audio.url }}" type="audio/webm">
+            <source src="{{ comment.audio.url }}" type="audio/mp4">
+            <source src="{{ comment.audio.url }}" type="audio/mpeg">
+        </audio>
+    </div>
+    {% endif %}
+
+    {% if user.is_authenticated %}
+    <button class="btn-reply" onclick="toggleReplyForm({{ comment.id }})">{% trans "Reply" %}</button>
+    <div id="reply-form-{{ comment.id }}" class="reply-form" style="display:none;">
+        <form method="post" action="" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+            <textarea name="comment" rows="2" maxlength="2000"
+                      placeholder="{% trans 'Write a reply...' %}"></textarea>
+            <div class="form-tools">
+                {% include "accounts/emoji_picker.html" %}
+                <div class="voice-bar" style="margin-top:0;">
+                <button type="button" class="btn-voice" id="voice-btn-{{ comment.id }}" onclick="toggleRecording({{ comment.id }})" title="{% trans 'Record voice' %}">&#127897; {% trans "Voice" %}</button>
+                <button type="button" class="btn-voice btn-stt" id="stt-btn-{{ comment.id }}" onclick="toggleSttRecording({{ comment.id }})" title="{% trans 'Voice to text' %}">&#9997; {% trans "STT" %}</button>
+                <span id="voice-status-{{ comment.id }}" class="voice-status"></span>
+                <input type="file" name="audio" id="audio-file-{{ comment.id }}" accept="audio/*" style="display:none;">
+            </div>
+            </div>
+            <div class="form-buttons" style="margin-top:4px;">
+                <button type="submit" class="btn-primary btn-sm">{% trans "Reply" %}</button>
+                <button type="button" class="btn-secondary btn-sm" onclick="toggleReplyForm({{ comment.id }})">{% trans "Cancel" %}</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% for reply in comment.replies.all %}
+        {% include "accounts/comment_item.html" with comment=reply %}
+    {% endfor %}
+</div>
+
+<script>
+function toggleReplyForm(id) {
+    var el = document.getElementById('reply-form-' + id);
+    if (el) {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+}
+</script>

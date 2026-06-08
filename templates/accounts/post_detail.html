@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                <a href="/weight-data/">体重数据</a>
+                {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                {% endif %}
+                                <div class="nav-right">
+                    <a href="/comments/received/" class="nav-envelope" title="Inbox">&#9993;</a>
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                        <a href="/success/">{% trans "Dashboard" %}</a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <a href="/logout/">{% trans "Logout" %}</a>
+                    {% else %}
+                        <a href="/login/">{% trans "Login" %}</a>
+                        <a href="/register/" class="btn-register">{% trans "Register" %}</a>
+                    {% endif %}
+                    {% include "accounts/language_switcher.html" %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="split-container">
+        <!-- Left: Post list sidebar with pagination -->
+        <aside class="split-sidebar">
+            <div class="sidebar-header">
+                <h3>{% trans "All Posts" %}</h3>
+                {% if user.is_authenticated %}
+                    <a href="/posts/create/" class="btn-sm btn-edit">{% trans "New Post" %}</a>
+                {% endif %}
+            </div>
+            <div class="sidebar-list">
+                {% for p in page_obj.object_list %}
+                    <a href="/posts/{{ p.id }}/?page={{ page_obj.number }}&per_page={{ page_obj.paginator.per_page }}"
+                       class="sidebar-item {% if p.id == post.id %}active{% endif %}">
+                        <span class="sidebar-title">{{ p.title }}</span>
+                        <span class="sidebar-meta">{{ p.author.username }} · <time class="utc-time" datetime="{{ p.created_at|date:'c' }}">{{ p.created_at|date:'m-d H:i' }}</time></span>
+                    </a>
+                {% empty %}
+                    <p class="empty-row">{% trans "No posts yet." %}</p>
+                {% endfor %}
+            </div>
+            <div class="sidebar-pagination">
+                {% include "accounts/pagination.html" %}
+            </div>
+        </aside>
+
+        <!-- Right: Post content -->
+        <main class="split-content">
+            <article class="post-detail-section">
+                <h2>{{ post.title }}</h2>
+                <div class="post-meta">
+                    <span class="post-author">{% trans "By" %} {{ post.author.username }}</span>
+                    <span class="post-date"><time class="utc-time" datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:'Y-m-d H:i' }}</time></span>
+                    {% if post.updated_at != post.created_at %}
+                        <span class="post-edited">({% trans "edited" %})</span>
+                    {% endif %}
+                </div>
+                <div class="translate-bar">
+                    <span class="translate-label">{% trans "Translate" %}:</span>
+                    <select id="translate-lang" class="translate-select" data-source="{{ source_lang }}">
+                        <option value="{{ source_lang }}" selected>
+                            {% if source_lang == 'zh' %}{% trans "Chinese (Original)" %}
+                            {% elif source_lang == 'ja' %}{% trans "Japanese (Original)" %}
+                            {% elif source_lang == 'ko' %}{% trans "Korean (Original)" %}
+                            {% else %}{% trans "English (Original)" %}{% endif %}
+                        </option>
+                        {% if source_lang != 'en' %}<option value="en">{% trans "English" %}</option>{% endif %}
+                        {% if source_lang != 'zh' %}<option value="zh">{% trans "Chinese" %}</option>{% endif %}
+                        {% if source_lang != 'ja' %}<option value="ja">{% trans "Japanese" %}</option>{% endif %}
+                        {% if source_lang != 'ko' %}<option value="ko">{% trans "Korean" %}</option>{% endif %}
+                    </select>
+                    <span id="translate-status" class="translate-status"></span>
+                </div>
+                <div class="post-content" id="post-content">
+                    {{ post.content|linebreaks }}
+                </div>
+                <div class="post-content" id="post-content-translated" style="display:none;"></div>
+
+                <!-- Comments Section -->
+                <div class="comments-section">
+                    <h3>{% trans "Comments" %} ({{ comments|length }})</h3>
+
+                    {% if user.is_authenticated %}
+                    <form method="post" class="comment-form" action="" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <textarea name="comment" rows="3" maxlength="2000"
+                                  placeholder="{% trans 'Write a comment...' %}" required></textarea>
+                        <div class="form-tools">
+                            {% include "accounts/emoji_picker.html" %}
+                            <div class="voice-bar" style="margin-top:0;">
+                            <button type="button" class="btn-voice" id="voice-btn-main" onclick="toggleRecording('main')" title="{% trans 'Record voice' %}">&#127897; {% trans "Voice" %}</button>
+                            <button type="button" class="btn-voice btn-stt" id="stt-btn-main" onclick="toggleSttRecording('main')" title="{% trans 'Voice to text' %}">&#9997; {% trans "STT" %}</button>
+                            <span id="voice-status-main" class="voice-status"></span>
+                            <input type="file" name="audio" id="audio-file-main" accept="audio/*" style="display:none;">
+                        </div>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="submit" class="btn-primary btn-sm">{% trans "Post Comment" %}</button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <p class="comment-login-hint">
+                        <a href="/login/">{% trans "Login" %}</a> {% trans "to leave a comment." %}
+                    </p>
+                    {% endif %}
+
+                    {% if messages %}
+                    <div class="messages" style="margin-top:12px;">
+                        {% for message in messages %}
+                            {% if 'comment' in message.message|lower or 'Comment' in message.message %}
+                            <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                                {{ message }}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% for comment in comments %}
+                        {% if not comment.parent %}
+                            {% include "accounts/comment_item.html" with comment=comment %}
+                        {% endif %}
+                    {% empty %}
+                    <p class="empty-row">{% trans "No comments yet." %}</p>
+                    {% endfor %}
+                </div>
+            </article>
+        </main>
+    </div>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+    {% include "accounts/timezone_js.html" %}
+    {% include "accounts/translate_js.html" %}
+    {% include "accounts/voice_js.html" %}
+</body>
+</html>

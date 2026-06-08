@@ -1,0 +1,12 @@
+{
+  "appid": "touristappid",
+  "projectname": "HelloWorld",
+  "setting": {
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.3.4"
+}

@@ -1,0 +1,18 @@
+<script>
+// Convert all <time class="utc-time"> elements from UTC to the browser's local timezone.
+document.addEventListener('DOMContentLoaded', function () {
+    var times = document.querySelectorAll('time.utc-time');
+    for (var i = 0; i < times.length; i++) {
+        var el = times[i];
+        var iso = el.getAttribute('datetime');
+        if (!iso) continue;
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) continue;
+            el.textContent = d.toLocaleString();
+        } catch (e) {
+            // leave the original text if parsing fails
+        }
+    }
+});
+</script>

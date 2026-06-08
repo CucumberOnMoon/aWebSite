@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Dashboard" %} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                <a href="/weight-data/">体重数据</a>
+                {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                {% endif %}
+                                <div class="nav-right">
+                    <a href="/comments/received/" class="nav-envelope" title="Inbox">&#9993;</a>
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                        <a href="/success/">{% trans "Dashboard" %}</a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <a href="/logout/">{% trans "Logout" %}</a>
+                    {% else %}
+                        <a href="/login/">{% trans "Login" %}</a>
+                        <a href="/register/" class="btn-register">{% trans "Register" %}</a>
+                    {% endif %}
+                    {% include "accounts/language_switcher.html" %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard-main">
+        <!-- Personal Info Section -->
+        <section class="hero">
+            <div class="success-icon">&#10003;</div>
+            <h1>{% trans "Login Successful!" %}</h1>
+            <p>{% blocktrans with username=user.username %}Welcome back, <strong>{{ username }}</strong>!{% endblocktrans %}</p>
+            <p class="text-muted">{% trans "You are now logged in to your account." %}</p>
+
+            <div class="dashboard-info">
+                <div class="info-card">
+                    <h3>{% trans "Username" %}</h3>
+                    <p>{{ user.username }}</p>
+                </div>
+                <div class="info-card">
+                    <h3>{% trans "Email" %}</h3>
+                    <p>{{ user.email|default:_('No email set') }}</p>
+                </div>
+                <div class="info-card">
+                    <h3>{% trans "Date Joined" %}</h3>
+                    <p><time class="utc-time" datetime="{{ user.date_joined|date:'c' }}">{{ user.date_joined|date:'Y-m-d H:i' }}</time></p>
+                </div>
+            </div>
+
+            <div class="cta-buttons">
+                <a href="/" class="btn-primary">{% trans "Back to Home" %}</a>
+                <a href="/logout/" class="btn-secondary">{% trans "Logout" %}</a>
+            </div>
+        </section>
+
+        <!-- All Users Table -->
+        <section class="users-section">
+            <h2>{% trans "All Users" %}</h2>
+            <div class="table-wrapper">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>{% trans "Username" %}</th>
+                            <th>{% trans "Email" %}</th>
+                            <th>{% trans "Date Joined" %}</th>
+                            <th>{% trans "Last Login" %}</th>
+                            <th>{% trans "IP Address" %}</th>
+                            <th>{% trans "Login Location" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in all_users %}
+                        <tr class="{% if u.id == user.id %}current-user{% endif %}">
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                {{ u.username }}
+                                {% if u.id == user.id %}<span class="badge">{% trans "You" %}</span>{% endif %}
+                            </td>
+                            <td class="email-cell">{{ u.email|default:'—' }}</td>
+                            <td><time class="utc-time" datetime="{{ u.date_joined|date:'c' }}">{{ u.date_joined|date:'Y-m-d H:i' }}</time></td>
+                            <td>{% if u.last_login %}<time class="utc-time" datetime="{{ u.last_login|date:'c' }}">{{ u.last_login|date:'Y-m-d H:i' }}</time>{% else %}—{% endif %}</td>
+                            <td>{{ u.profile.last_login_ip|default:'—' }}</td>
+                            <td>{{ u.profile.last_login_location|default:'—' }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-row">{% trans "No users found." %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+{% include "accounts/timezone_js.html" %}
+</body>
+</html>

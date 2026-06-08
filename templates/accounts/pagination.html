@@ -1,0 +1,50 @@
+{% load i18n %}
+{% with pp=page_obj.paginator.per_page %}
+<nav class="pagination">
+    {% if page_obj.paginator.num_pages > 1 %}
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&per_page={{ pp }}" class="page-link">&laquo; {% trans "Prev" %}</a>
+        {% else %}
+            <span class="page-link disabled">&laquo; {% trans "Prev" %}</span>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                {% if num == page_obj.number %}
+                    <span class="page-link active">{{ num }}</span>
+                {% else %}
+                    <a href="?page={{ num }}&per_page={{ pp }}" class="page-link">{{ num }}</a>
+                {% endif %}
+            {% elif num == 1 or num == page_obj.paginator.num_pages %}
+                {% if num == 1 and page_obj.number > 4 %}
+                    <a href="?page=1&per_page={{ pp }}" class="page-link">1</a>
+                    <span class="page-ellipsis">...</span>
+                {% elif num == page_obj.paginator.num_pages and page_obj.number < page_obj.paginator.num_pages|add:'-3' %}
+                    <span class="page-ellipsis">...</span>
+                    <a href="?page={{ page_obj.paginator.num_pages }}&per_page={{ pp }}" class="page-link">{{ page_obj.paginator.num_pages }}</a>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&per_page={{ pp }}" class="page-link">{% trans "Next" %} &raquo;</a>
+        {% else %}
+            <span class="page-link disabled">{% trans "Next" %} &raquo;</span>
+        {% endif %}
+    {% endif %}
+
+    <span class="page-info">{% blocktrans with current=page_obj.number total=page_obj.paginator.num_pages total_posts=page_obj.paginator.count %}Page {{ current }} of {{ total }} ({{ total_posts }} posts){% endblocktrans %}</span>
+
+    {% if per_page_options %}
+    <form class="per-page-form" method="get" action="">
+        <label for="per_page_select">{% trans "Show" %}</label>
+        <select id="per_page_select" name="per_page" onchange="this.form.submit()">
+            {% for opt in per_page_options %}
+                <option value="{{ opt }}" {% if pp == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit">{% trans "Go" %}</button></noscript>
+    </form>
+    {% endif %}
+</nav>
+{% endwith %}

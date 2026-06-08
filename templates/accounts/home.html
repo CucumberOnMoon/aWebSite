@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Welcome" %} - {% trans "Home" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                    <a href="/posts/">{% trans "Home" %}</a>
+                    <a href="/weight-data/">体重数据</a>
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                {% endif %}
+                                <div class="nav-right">
+                    <a href="/comments/received/" class="nav-envelope" title="Inbox">&#9993;</a>
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                        <a href="/success/">{% trans "Dashboard" %}</a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <a href="/logout/">{% trans "Logout" %}</a>
+                    {% else %}
+                        <a href="/login/">{% trans "Login" %}</a>
+                        <a href="/register/" class="btn-register">{% trans "Register" %}</a>
+                    {% endif %}
+                    {% include "accounts/language_switcher.html" %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>{% trans "Welcome to MySite" %}</h1>
+            <p>{% trans "A simple Django website with authentication." %}</p>
+            {% if user.is_authenticated %}
+                <p>{% blocktrans with username=user.username %}Hello, <strong>{{ username }}</strong>!{% endblocktrans %}</p>
+                <div class="cta-buttons">
+                    <a href="/success/" class="btn-primary">{% trans "Go to Dashboard" %}</a>
+                    <a href="/logout/" class="btn-secondary">{% trans "Logout" %}</a>
+                </div>
+            {% else %}
+                <div class="cta-buttons">
+                    <a href="/login/" class="btn-primary">{% trans "Login" %}</a>
+                    <a href="/register/" class="btn-secondary">{% trans "Create Account" %}</a>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+</body>
+</html>

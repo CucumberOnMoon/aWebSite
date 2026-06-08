@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Posts" %} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                <a href="/weight-data/">体重数据</a>
+                {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                {% endif %}
+                                <div class="nav-right">
+                    <a href="/comments/received/" class="nav-envelope" title="Inbox">&#9993;</a>
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                        <a href="/success/">{% trans "Dashboard" %}</a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <a href="/logout/">{% trans "Logout" %}</a>
+                    {% else %}
+                        <a href="/login/">{% trans "Login" %}</a>
+                        <a href="/register/" class="btn-register">{% trans "Register" %}</a>
+                    {% endif %}
+                    {% include "accounts/language_switcher.html" %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="post-main">
+        <section class="post-list-section">
+            <div class="post-list-header">
+                <h2>{% trans "All Posts" %}</h2>
+                {% if user.is_authenticated %}
+                    <a href="/posts/create/" class="btn-primary">{% trans "New Post" %}</a>
+                {% endif %}
+            </div>
+
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if posts %}
+                {% include "accounts/pagination.html" %}
+                <div class="post-list">
+                    {% for post in posts %}
+                        <article class="post-item">
+                            <h3>
+                                <a href="/posts/{{ post.id }}/?page={{ page_obj.number }}&per_page={{ page_obj.paginator.per_page }}">{{ post.title }}</a>
+                            </h3>
+                            <div class="post-meta">
+                                <span class="post-author">{% trans "By" %} {{ post.author.username }}</span>
+                                <span class="post-date"><time class="utc-time" datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:'Y-m-d H:i' }}</time></span>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+                {% include "accounts/pagination.html" %}
+            {% else %}
+                <p class="empty-row">{% trans "No posts yet." %}</p>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+{% include "accounts/timezone_js.html" %}
+</body>
+</html>

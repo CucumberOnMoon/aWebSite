@@ -1,0 +1,427 @@
+# Chinese Simplified translations for web_project.
+# Copyright (C) 2026 MySite
+# This file is distributed under the same license as the web_project project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: web_project 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-04 19:00+0800\n"
+"PO-Revision-Date: 2026-06-04 19:00+0800\n"
+"Last-Translator: \n"
+"Language-Team: Chinese Simplified\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: templates/accounts/home.html
+msgid "Home"
+msgstr "首页"
+
+#: templates/accounts/home.html
+msgid "MySite"
+msgstr "我的网站"
+
+#: templates/accounts/home.html templates/accounts/login.html
+#: templates/accounts/register.html templates/accounts/success.html
+msgid "Dashboard"
+msgstr "控制台"
+
+#: templates/accounts/home.html templates/accounts/success.html
+msgid "Logout"
+msgstr "退出登录"
+
+#: templates/accounts/home.html templates/accounts/login.html
+#: templates/accounts/register.html
+msgid "Login"
+msgstr "登录"
+
+#: templates/accounts/home.html templates/accounts/register.html
+msgid "Register"
+msgstr "注册"
+
+#: templates/accounts/home.html
+msgid "Welcome"
+msgstr "欢迎"
+
+#: templates/accounts/home.html
+msgid "Welcome to MySite"
+msgstr "欢迎来到我的网站"
+
+#: templates/accounts/home.html
+msgid "A simple Django website with authentication."
+msgstr "一个带认证功能的 Django 网站。"
+
+#: templates/accounts/home.html
+#, python-format
+msgid "Hello, <strong>%(username)s</strong>!"
+msgstr "你好，<strong>%(username)s</strong>！"
+
+#: templates/accounts/home.html
+msgid "Go to Dashboard"
+msgstr "进入控制台"
+
+#: templates/accounts/home.html
+msgid "Create Account"
+msgstr "创建账户"
+
+#: templates/accounts/login.html templates/accounts/register.html
+#: templates/accounts/success.html
+msgid "Username"
+msgstr "用户名"
+
+#: templates/accounts/login.html templates/accounts/register.html
+msgid "Password"
+msgstr "密码"
+
+#: templates/accounts/login.html
+msgid "Don't have an account?"
+msgstr "还没有账户？"
+
+#: templates/accounts/login.html
+msgid "Register here"
+msgstr "在此注册"
+
+#: templates/accounts/register.html
+msgid "Confirm Password"
+msgstr "确认密码"
+
+#: templates/accounts/register.html
+msgid "Already have an account?"
+msgstr "已有账户？"
+
+#: templates/accounts/register.html
+msgid "Login here"
+msgstr "在此登录"
+
+#: templates/accounts/success.html
+msgid "Login Successful!"
+msgstr "登录成功！"
+
+#: templates/accounts/success.html
+#, python-format
+msgid "Welcome back, <strong>%(username)s</strong>!"
+msgstr "欢迎回来，<strong>%(username)s</strong>！"
+
+#: templates/accounts/success.html
+msgid "You are now logged in to your account."
+msgstr "您已成功登录您的账户。"
+
+#: templates/accounts/success.html
+msgid "Email"
+msgstr "邮箱"
+
+#: templates/accounts/success.html
+msgid "Date Joined"
+msgstr "注册日期"
+
+#: templates/accounts/success.html
+msgid "No email set"
+msgstr "未设置邮箱"
+
+#: templates/accounts/success.html
+msgid "Back to Home"
+msgstr "返回首页"
+
+#: templates/accounts/success.html
+msgid "All Users"
+msgstr "所有用户"
+
+#: templates/accounts/success.html
+msgid "Last Login"
+msgstr "最后登录"
+
+#: templates/accounts/success.html
+msgid "You"
+msgstr "你"
+
+#: templates/accounts/success.html
+msgid "No users found."
+msgstr "暂无用户。"
+
+#: templates/accounts/success.html
+msgid "IP Address"
+msgstr "IP 地址"
+
+#: templates/accounts/success.html
+msgid "Login Location"
+msgstr "登录地点"
+
+#: templates/accounts/post_list.html templates/accounts/post_detail.html
+#: templates/accounts/post_create.html templates/accounts/home.html
+#: templates/accounts/login.html templates/accounts/register.html
+#: templates/accounts/pagination.html
+msgid "Show"
+msgstr "每页"
+
+#: templates/accounts/pagination.html
+msgid "Go"
+msgstr "确定"
+
+#: templates/accounts/emoji_picker.html
+msgid "Insert emoji"
+msgstr "插入表情"
+
+#: templates/accounts/emoji_picker.html
+msgid "Happy"
+msgstr "开心"
+
+#: templates/accounts/emoji_picker.html
+msgid "Sad"
+msgstr "伤心"
+
+#: templates/accounts/emoji_picker.html
+msgid "Action"
+msgstr "动作"
+
+#: templates/accounts/emoji_picker.html
+msgid "Animal"
+msgstr "动物"
+
+#: templates/accounts/comment_item.html templates/accounts/post_detail.html
+msgid "STT"
+msgstr "语音转文字"
+
+#: templates/accounts/comment_item.html templates/accounts/post_detail.html
+msgid "Voice to text"
+msgstr "语音转文字"
+
+#: templates/accounts/comment_item.html templates/accounts/post_detail.html
+msgid "Voice"
+msgstr "语音"
+
+#: templates/accounts/comment_item.html templates/accounts/post_detail.html
+msgid "Record voice"
+msgstr "录制语音"
+
+#: templates/accounts/comment_item.html
+msgid "Reply"
+msgstr "回复"
+
+#: templates/accounts/comment_item.html
+msgid "replied to"
+msgstr "回复了"
+
+#: templates/accounts/comment_item.html
+msgid "Write a reply..."
+msgstr "写一条回复..."
+
+#: templates/accounts/post_detail.html
+msgid "Comments"
+msgstr "评论"
+
+#: templates/accounts/post_detail.html
+msgid "Write a comment..."
+msgstr "写一条评论..."
+
+#: templates/accounts/post_detail.html
+msgid "Post Comment"
+msgstr "发表评论"
+
+#: templates/accounts/post_detail.html
+msgid "to leave a comment."
+msgstr "后发表评论。"
+
+#: templates/accounts/post_detail.html
+msgid "No comments yet."
+msgstr "暂无评论。"
+
+#: templates/accounts/received_comments.html
+msgid "Inbox"
+msgstr "收件箱"
+
+#: templates/accounts/received_comments.html
+msgid "Received Comments"
+msgstr "收到的评论"
+
+#: templates/accounts/received_comments.html
+msgid "Your Inbox"
+msgstr "你的收件箱"
+
+#: templates/accounts/received_comments.html
+msgid "Select a comment on the left to view the related post."
+msgstr "在左侧选择一条评论以查看相关帖子。"
+
+#: templates/accounts/received_comments.html
+msgid "No comments received yet."
+msgstr "暂无收到的评论。"
+
+#: templates/accounts/post_detail.html
+msgid "Translate"
+msgstr "翻译"
+
+#: templates/accounts/post_detail.html
+msgid "Japanese"
+msgstr "日文"
+
+#: templates/accounts/post_detail.html
+msgid "Korean"
+msgstr "韩文"
+
+#: templates/accounts/post_detail.html
+msgid "Japanese (Original)"
+msgstr "日文（原文）"
+
+#: templates/accounts/post_detail.html
+msgid "Korean (Original)"
+msgstr "韩文（原文）"
+
+#: templates/accounts/post_detail.html
+msgid "English (Original)"
+msgstr "英文（原文）"
+
+#: templates/accounts/post_detail.html
+msgid "Chinese"
+msgstr "中文"
+
+#: templates/accounts/post_detail.html
+msgid "Chinese (Original)"
+msgstr "中文（原文）"
+
+#: templates/accounts/post_detail.html
+msgid "English"
+msgstr "英文"
+
+#: templates/accounts/pagination.html
+msgid "Prev"
+msgstr "上一页"
+
+#: templates/accounts/pagination.html
+msgid "Next"
+msgstr "下一页"
+
+#: templates/accounts/pagination.html
+#, python-format
+msgid "Page %(current)s of %(total)s (%(total_posts)s posts)"
+msgstr "第 %(current)s 页 / 共 %(total)s 页（共 %(total_posts)s 篇）"
+
+#: templates/accounts/success.html
+msgid "Posts"
+msgstr "帖子"
+
+#: templates/accounts/post_list.html
+msgid "All Posts"
+msgstr "所有帖子"
+
+#: templates/accounts/post_list.html templates/accounts/post_create.html
+msgid "New Post"
+msgstr "发表帖子"
+
+#: templates/accounts/post_list.html templates/accounts/post_detail.html
+msgid "By"
+msgstr "作者"
+
+#: templates/accounts/post_create.html
+msgid "Title"
+msgstr "标题"
+
+#: templates/accounts/post_create.html
+msgid "Content"
+msgstr "内容"
+
+#: templates/accounts/post_create.html
+msgid "Enter post title"
+msgstr "输入帖子标题"
+
+#: templates/accounts/post_create.html
+msgid "Write your post content..."
+msgstr "写下你的帖子内容..."
+
+#: templates/accounts/post_create.html
+msgid "Publish"
+msgstr "发布"
+
+#: templates/accounts/post_create.html
+msgid "Cancel"
+msgstr "取消"
+
+#: templates/accounts/post_list.html
+msgid "No posts yet."
+msgstr "暂无帖子。"
+
+#: templates/accounts/post_detail.html
+msgid "Back to Posts"
+msgstr "返回帖子列表"
+
+#: templates/accounts/post_detail.html
+msgid "edited"
+msgstr "已编辑"
+
+#: templates/accounts/user_manage.html
+msgid "Manage Users"
+msgstr "用户管理"
+
+#: templates/accounts/user_manage.html templates/accounts/user_edit.html
+msgid "Add User"
+msgstr "添加用户"
+
+#: templates/accounts/user_edit.html
+msgid "Edit User"
+msgstr "编辑用户"
+
+#: templates/accounts/user_manage.html templates/accounts/user_edit.html
+msgid "Role"
+msgstr "角色"
+
+#: templates/accounts/user_manage.html templates/accounts/user_edit.html
+msgid "Admin"
+msgstr "管理员"
+
+#: templates/accounts/user_manage.html templates/accounts/user_edit.html
+msgid "User"
+msgstr "用户"
+
+#: templates/accounts/user_manage.html
+msgid "Actions"
+msgstr "操作"
+
+#: templates/accounts/user_manage.html
+msgid "Edit"
+msgstr "编辑"
+
+#: templates/accounts/user_manage.html
+msgid "Delete"
+msgstr "删除"
+
+#: templates/accounts/user_manage.html
+msgid "Delete this user?"
+msgstr "确认删除此用户？"
+
+#: templates/accounts/user_edit.html
+msgid "Save Changes"
+msgstr "保存更改"
+
+#: templates/accounts/user_edit.html
+msgid "Create User"
+msgstr "创建用户"
+
+#: templates/accounts/user_edit.html
+msgid "Enter username"
+msgstr "输入用户名"
+
+#: templates/accounts/user_edit.html
+msgid "Enter email (optional)"
+msgstr "输入邮箱（选填）"
+
+#: templates/accounts/user_edit.html
+msgid "Enter password"
+msgstr "输入密码"
+
+#: templates/accounts/user_edit.html
+msgid "Confirm password"
+msgstr "确认密码"
+
+#: templates/accounts/user_edit.html
+msgid "New password (optional)"
+msgstr "新密码（不填则不修改）"
+
+#: templates/accounts/user_edit.html
+msgid "(leave blank to keep unchanged)"
+msgstr "（留空保持不变）"
+
+#: templates/accounts/home.html templates/accounts/login.html
+#: templates/accounts/register.html templates/accounts/success.html
+msgid "© 2026 MySite. Built with Django."
+msgstr "© 2026 我的网站. 使用 Django 构建。"

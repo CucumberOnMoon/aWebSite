@@ -1,0 +1,7 @@
+<view class="container">
+  <view class="card">
+    <text class="hello">{{greeting}}</text>
+    <text class="sub">Welcome to Mini Program</text>
+    <text class="time">{{timestamp}}</text>
+  </view>
+</view>

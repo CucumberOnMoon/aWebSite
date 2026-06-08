@@ -1,0 +1,161 @@
+{% load i18n %}
+<div class="emoji-picker">
+    <button type="button" class="btn-emoji-toggle" onclick="toggleEmojiPicker(this)" title="{% trans 'Insert emoji' %}">&#128512;</button>
+    <div class="emoji-panel" style="display:none;">
+        <div class="emoji-tabs">
+            <button type="button" class="emoji-tab active" onclick="switchEmojiTab(this, 'emojis')">Emoji</button>
+            <button type="button" class="emoji-tab" onclick="switchEmojiTab(this, 'kaomoji-happy')">{% trans "Happy" %}</button>
+            <button type="button" class="emoji-tab" onclick="switchEmojiTab(this, 'kaomoji-sad')">{% trans "Sad" %}</button>
+            <button type="button" class="emoji-tab" onclick="switchEmojiTab(this, 'kaomoji-action')">{% trans "Action" %}</button>
+            <button type="button" class="emoji-tab" onclick="switchEmojiTab(this, 'kaomoji-animal')">{% trans "Animal" %}</button>
+        </div>
+
+        <!-- Standard Emojis -->
+        <div class="emoji-grid active" id="emoji-group-emojis">
+            <span onclick="insertEmoji(this)">😀</span><span onclick="insertEmoji(this)">😂</span>
+            <span onclick="insertEmoji(this)">🤣</span><span onclick="insertEmoji(this)">😍</span>
+            <span onclick="insertEmoji(this)">😎</span><span onclick="insertEmoji(this)">🤔</span>
+            <span onclick="insertEmoji(this)">😭</span><span onclick="insertEmoji(this)">😡</span>
+            <span onclick="insertEmoji(this)">👍</span><span onclick="insertEmoji(this)">👎</span>
+            <span onclick="insertEmoji(this)">👏</span><span onclick="insertEmoji(this)">🙌</span>
+            <span onclick="insertEmoji(this)">💪</span><span onclick="insertEmoji(this)">🤝</span>
+            <span onclick="insertEmoji(this)">🎉</span><span onclick="insertEmoji(this)">🎊</span>
+            <span onclick="insertEmoji(this)">❤️</span><span onclick="insertEmoji(this)">💔</span>
+            <span onclick="insertEmoji(this)">🔥</span><span onclick="insertEmoji(this)">⭐</span>
+            <span onclick="insertEmoji(this)">✨</span><span onclick="insertEmoji(this)">💯</span>
+            <span onclick="insertEmoji(this)">✅</span><span onclick="insertEmoji(this)">❌</span>
+            <span onclick="insertEmoji(this)">🤯</span><span onclick="insertEmoji(this)">🥺</span>
+            <span onclick="insertEmoji(this)">🙏</span><span onclick="insertEmoji(this)">💀</span>
+            <span onclick="insertEmoji(this)">👀</span><span onclick="insertEmoji(this)">🤗</span>
+            <span onclick="insertEmoji(this)">🫡</span><span onclick="insertEmoji(this)">😴</span>
+            <span onclick="insertEmoji(this)">🤤</span><span onclick="insertEmoji(this)">😱</span>
+            <span onclick="insertEmoji(this)">🤡</span><span onclick="insertEmoji(this)">👻</span>
+            <span onclick="insertEmoji(this)">🐱</span><span onclick="insertEmoji(this)">🐶</span>
+            <span onclick="insertEmoji(this)">🌹</span><span onclick="insertEmoji(this)">🍕</span>
+            <span onclick="insertEmoji(this)">☕</span><span onclick="insertEmoji(this)">🍺</span>
+        </div>
+
+        <!-- Kaomoji: Happy -->
+        <div class="emoji-grid" id="emoji-group-kaomoji-happy">
+            <span onclick="insertEmoji(this)">(｡•̀ᴗ-´)ᕤ</span>
+            <span onclick="insertEmoji(this)">(◕‿◕✿)</span>
+            <span onclick="insertEmoji(this)">(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧</span>
+            <span onclick="insertEmoji(this)">(≧▽≦)</span>
+            <span onclick="insertEmoji(this)">(＾▽＾)</span>
+            <span onclick="insertEmoji(this)">╰(▔∀▔)╯</span>
+            <span onclick="insertEmoji(this)">(๑˃̵ᴗ˂̵)و</span>
+            <span onclick="insertEmoji(this)">٩(◕‿◕｡)۶</span>
+            <span onclick="insertEmoji(this)">(✿◠‿◠)</span>
+            <span onclick="insertEmoji(this)">ヽ(•‿•)ノ</span>
+            <span onclick="insertEmoji(this)">(´∀｀)♡</span>
+            <span onclick="insertEmoji(this)">(* ^ ω ^)</span>
+        </div>
+
+        <!-- Kaomoji: Sad -->
+        <div class="emoji-grid" id="emoji-group-kaomoji-sad">
+            <span onclick="insertEmoji(this)">(╥﹏╥)</span>
+            <span onclick="insertEmoji(this)">(╯︵╰)</span>
+            <span onclick="insertEmoji(this)">(；一_一)</span>
+            <span onclick="insertEmoji(this)">(｡•́︿•̀｡)</span>
+            <span onclick="insertEmoji(this)">(◞‸◟)</span>
+            <span onclick="insertEmoji(this)">(╯_╰)</span>
+            <span onclick="insertEmoji(this)">(´-﹏-`;)</span>
+            <span onclick="insertEmoji(this)">(ノ_<。)</span>
+            <span onclick="insertEmoji(this)">(个_个)</span>
+            <span onclick="insertEmoji(this)">(´；ω；`)</span>
+            <span onclick="insertEmoji(this)">(T_T)</span>
+            <span onclick="insertEmoji(this)">(╥╯﹏╰╥)</span>
+        </div>
+
+        <!-- Kaomoji: Action -->
+        <div class="emoji-grid" id="emoji-group-kaomoji-action">
+            <span onclick="insertEmoji(this)">(╯°□°）╯︵ ┻━┻</span>
+            <span onclick="insertEmoji(this)">┬─┬ ノ( ゜-゜ノ)</span>
+            <span onclick="insertEmoji(this)">(•_•) ( •_•)>⌐■-■ (⌐■_■)</span>
+            <span onclick="insertEmoji(this)">( ͡° ͜ʖ ͡°)</span>
+            <span onclick="insertEmoji(this)">(☞ﾟヮﾟ)☞</span>
+            <span onclick="insertEmoji(this)">(´･ω･`)?</span>
+            <span onclick="insertEmoji(this)">(╭ರ_⊙)</span>
+            <span onclick="insertEmoji(this)">(ノಠ益ಠ)ノ</span>
+            <span onclick="insertEmoji(this)">(ง'̀-'́)ง</span>
+            <span onclick="insertEmoji(this)">(ಠ_ಠ)</span>
+            <span onclick="insertEmoji(this)">(⌐■_■)</span>
+            <span onclick="insertEmoji(this)">┐(´д｀)┌</span>
+        </div>
+
+        <!-- Kaomoji: Animal -->
+        <div class="emoji-grid" id="emoji-group-kaomoji-animal">
+            <span onclick="insertEmoji(this)">(=^･ω･^=)</span>
+            <span onclick="insertEmoji(this)">(ᵔᴥᵔ)</span>
+            <span onclick="insertEmoji(this)">(◕ᴥ◕)</span>
+            <span onclick="insertEmoji(this)">ʕ·ᴥ·ʔ</span>
+            <span onclick="insertEmoji(this)">(^-人-^)</span>
+            <span onclick="insertEmoji(this)">(￣(工)￣)</span>
+            <span onclick="insertEmoji(this)">(｡･ω･｡)</span>
+            <span onclick="insertEmoji(this)">V●ᴥ●V</span>
+            <span onclick="insertEmoji(this)">(＝⌒▽⌒＝)</span>
+            <span onclick="insertEmoji(this)">(^・ω・^ )</span>
+            <span onclick="insertEmoji(this)">（ΦωΦ）</span>
+            <span onclick="insertEmoji(this)">(^=˃ᆺ˂)</span>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEmojiPicker(btn) {
+    var panel = btn.nextElementSibling;
+    if (panel.style.display === 'none') {
+        // Close all other open panels first
+        document.querySelectorAll('.emoji-panel').forEach(function(p) {
+            if (p !== panel) p.style.display = 'none';
+        });
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+function switchEmojiTab(btn, group) {
+    // Update tab active state
+    btn.parentElement.querySelectorAll('.emoji-tab').forEach(function(t) {
+        t.classList.remove('active');
+    });
+    btn.classList.add('active');
+    // Show matching group
+    var panel = btn.closest('.emoji-panel');
+    panel.querySelectorAll('.emoji-grid').forEach(function(g) {
+        g.classList.remove('active');
+    });
+    var target = document.getElementById('emoji-group-' + group);
+    if (target) target.classList.add('active');
+}
+
+function insertEmoji(el) {
+    var text = el.textContent;
+    // Find the nearest textarea
+    var panel = el.closest('.emoji-picker');
+    var form = panel.closest('form');
+    var textarea = form.querySelector('textarea');
+    if (!textarea) return;
+
+    var start = textarea.selectionStart;
+    var end = textarea.selectionEnd;
+    var before = textarea.value.substring(0, start);
+    var after = textarea.value.substring(end);
+    textarea.value = before + text + after;
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    textarea.focus();
+
+    // Close panel
+    panel.querySelector('.emoji-panel').style.display = 'none';
+}
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.emoji-picker')) {
+        document.querySelectorAll('.emoji-panel').forEach(function(p) {
+            p.style.display = 'none';
+        });
+    }
+});
+</script>

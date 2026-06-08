@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Manage Users" %} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                <a href="/weight-data/">体重数据</a>
+                <a href="/success/">{% trans "Dashboard" %}</a>
+                <a href="/users/">{% trans "Manage Users" %}</a>
+                <a href="/logout/">{% trans "Logout" %}</a>
+                {% include "accounts/language_switcher.html" %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="post-main">
+        <section class="post-list-section">
+            <div class="post-list-header">
+                <h2>{% trans "Manage Users" %}</h2>
+                <a href="/users/create/" class="btn-primary">{% trans "Add User" %}</a>
+            </div>
+
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="table-wrapper">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>{% trans "Username" %}</th>
+                            <th>{% trans "Email" %}</th>
+                            <th>{% trans "Role" %}</th>
+                            <th>{% trans "Date Joined" %}</th>
+                            <th>{% trans "Last Login" %}</th>
+                            <th>{% trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in all_users %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ u.username }}</td>
+                            <td class="email-cell">{{ u.email|default:'—' }}</td>
+                            <td>
+                                <span class="role-badge role-{{ u.profile.role }}">
+                                    {% if u.profile.is_admin %}{% trans "Admin" %}{% else %}{% trans "User" %}{% endif %}
+                                </span>
+                            </td>
+                            <td><time class="utc-time" datetime="{{ u.date_joined|date:'c' }}">{{ u.date_joined|date:'Y-m-d H:i' }}</time></td>
+                            <td>{% if u.last_login %}<time class="utc-time" datetime="{{ u.last_login|date:'c' }}">{{ u.last_login|date:'Y-m-d H:i' }}</time>{% else %}—{% endif %}</td>
+                            <td class="action-cell">
+                                <a href="/users/{{ u.id }}/edit/" class="btn-sm btn-edit">{% trans "Edit" %}</a>
+                                {% if u.id != user.id %}
+                                    <a href="/users/{{ u.id }}/delete/"
+                                       class="btn-sm btn-delete"
+                                       onclick="return confirm('{% trans 'Delete this user?' %}')">{% trans "Delete" %}</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-row">{% trans "No users found." %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+    {% include "accounts/timezone_js.html" %}
+</body>
+</html>

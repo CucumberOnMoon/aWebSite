@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Received Comments" %} - {% trans "MySite" %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/posts/">{% trans "Home" %}</a>
+                <a href="/weight-data/">体重数据</a>
+                {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                {% endif %}
+                                <div class="nav-right">
+                    <a href="/comments/received/" class="nav-envelope" title="Inbox">&#9993;</a>
+                    {% if user.is_authenticated and user.profile.is_admin %}
+                        <a href="/success/">{% trans "Dashboard" %}</a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <a href="/logout/">{% trans "Logout" %}</a>
+                    {% else %}
+                        <a href="/login/">{% trans "Login" %}</a>
+                        <a href="/register/" class="btn-register">{% trans "Register" %}</a>
+                    {% endif %}
+                    {% include "accounts/language_switcher.html" %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="split-container">
+        <!-- Left: Comment list -->
+        <aside class="split-sidebar">
+            <div class="sidebar-header">
+                <h3>{% trans "Received Comments" %}</h3>
+                <span class="inbox-count">{{ comment_rows|length }}</span>
+            </div>
+            <div class="sidebar-list inbox-list">
+                {% for comment, show_title in comment_rows %}
+                    <a href="?post_id={{ comment.post.id }}#comment-{{ comment.id }}"
+                       class="sidebar-item inbox-row {% if selected_post and selected_post.id == comment.post.id %}active{% endif %}">
+                        <span class="inbox-title-cell">
+                            {% if show_title %}{{ comment.post.title }}{% endif %}
+                        </span>
+                        <span class="inbox-comment-cell">
+                            <span class="inbox-comment-text">{{ comment.content|truncatechars:80 }}</span>
+                            <span class="inbox-comment-meta">
+                                <strong>{{ comment.author.username }}</strong>
+                                <time class="utc-time" datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:'m-d H:i' }}</time>
+                            </span>
+                        </span>
+                    </a>
+                {% empty %}
+                    <p class="empty-row">{% trans "No comments received yet." %}</p>
+                {% endfor %}
+            </div>
+        </aside>
+
+        <!-- Right: Selected post content -->
+        <main class="split-content">
+            {% if selected_post %}
+                <article class="post-detail-section">
+                    <h2>{{ selected_post.title }}</h2>
+                    <div class="post-meta">
+                        <span class="post-author">{% trans "By" %} {{ selected_post.author.username }}</span>
+                        <span class="post-date"><time class="utc-time" datetime="{{ selected_post.created_at|date:'c' }}">{{ selected_post.created_at|date:'Y-m-d H:i' }}</time></span>
+                    </div>
+                    <div class="post-content">
+                        {{ selected_post.content|linebreaks }}
+                    </div>
+
+                    <!-- Post comments -->
+                    <div class="comments-section">
+                        <h3>{% trans "Comments" %} ({{ selected_comments|length }})</h3>
+                        {% for comment in selected_comments %}
+                        <div class="comment-item" id="comment-{{ comment.id }}">
+                            <div class="comment-meta">
+                                <strong>{{ comment.author.username }}</strong>
+                                <span class="comment-time"><time class="utc-time" datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:'Y-m-d H:i' }}</time></span>
+                            </div>
+                            <div class="comment-content">{{ comment.content|linebreaks }}</div>
+                            {% if comment.has_audio %}
+                            <div class="comment-audio">
+                                <audio controls preload="metadata">
+                                    <source src="{{ comment.audio.url }}" type="audio/webm">
+                                </audio>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <p class="empty-row">{% trans "No comments yet." %}</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% else %}
+                <div class="inbox-placeholder">
+                    <div class="inbox-icon">&#9993;</div>
+                    <h2>{% trans "Your Inbox" %}</h2>
+                    <p>{% trans "Select a comment on the left to view the related post." %}</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <footer>
+        <p>{% trans "© 2026 MySite. Built with Django." %}</p>
+    </footer>
+    {% include "accounts/timezone_js.html" %}
+</body>
+</html>

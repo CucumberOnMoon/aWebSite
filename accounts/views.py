@@ -168,6 +168,10 @@ def weight_upload(request):
             logger.info("winrt not available, skipping local OCR")
             ocr_result = {}
         
+        # Log raw OCR lines if date was not detected
+        if ocr_result.get('raw_lines') and not ocr_result.get('date'):
+            logger.warning(f"OCR raw lines (no date found): {ocr_result['raw_lines']}")
+        
         dt = datetime.now().replace(tzinfo=timezone.get_current_timezone())
         
         # Use OCR-extracted date if available
@@ -232,19 +236,19 @@ def weight_upload(request):
                     resp[f] = str(v)
             return JsonResponse(resp)
         
-        # ========== STEP 2: Fallback to DeepSeek Vision API ==========
+        # ========== STEP 2: Fallback to OpenRouter vision API ==========
         import base64
         with open(tmp_path, 'rb') as f:
             b64 = base64.b64encode(f.read()).decode('utf-8')
         
-        # Get API key from env or settings
-        api_key = os.environ.get('DEEPSEEK_API_KEY') or os.environ.get('OPENROUTER_API_KEY')
+        # Get API key
+        api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
         if not api_key:
             return JsonResponse({'error': '未配置API密钥'}, status=500)
         
-        # Call DeepSeek vision API (V4 Flash supports images)
+        # Call OpenRouter vision API
         resp = requests.post(
-            'https://api.deepseek.com/v1/chat/completions',
+            'https://openrouter.ai/api/v1/chat/completions',
             headers={
                 'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json',

@@ -19,6 +19,14 @@ except ImportError:
 
 from PIL import Image
 
+# On Linux, try Tesseract as local OCR
+_tesseract_available = False
+try:
+    import pytesseract
+    _tesseract_available = True
+except ImportError:
+    _tesseract_available = False
+
 _ocr_engine = None
 
 def _get_ocr():
@@ -99,14 +107,40 @@ def parse(raw_lines):
                     if v: return fmt(v)
         return None
 
-    # === DATE/TIME ===
+    # === DATE/TIME — support multiple formats ===
+    date_found = False
     for c, r in pairs:
-        norm = r.replace('：',':').replace('／','/')
+        norm = r.replace('：',':').replace('／','/').replace('年','/').replace('月','/').replace('日',' ').replace('.','-')
+        # YYYY/MM/DD HH:MM (primary)
         m = re.search(r'(\d{4})\s*[/\-]\s*(\d{1,2})\s*[/\-]\s*(\d{1,2})\s+(\d{1,2})\s*:\s*(\d{2})', norm)
         if m:
             data['date'] = f"{m[1]}-{m[2].zfill(2)}-{m[3].zfill(2)}"
             data['time'] = f"{m[4].zfill(2)}:{m[5]}"
+            date_found = True
             break
+        # MM/DD HH:MM (no year) - use current year
+        m = re.search(r'(\d{1,2})\s*[/\-]\s*(\d{1,2})\s+(\d{1,2})\s*:\s*(\d{2})(?!.*\d{4})', norm)
+        if m:
+            from datetime import datetime as _dt
+            data['date'] = f"{_dt.now().year}-{m[1].zfill(2)}-{m[2].zfill(2)}"
+            data['time'] = f"{m[3].zfill(2)}:{m[4]}"
+            date_found = True
+            break
+    if not date_found:
+        # Fallback: try to find any date-like pattern in raw joined text
+        for c, r in pairs:
+            norm = r.replace('：',':').replace('／','/').replace('年','/').replace('月','/').replace('日',' ').replace('.','-')
+            m = re.search(r'(\d{4}).*?(\d{1,2}).*?(\d{1,2})', norm)
+            if m:
+                y, mo, d = m.group(1), m.group(2), m.group(3)
+                if 2020 <= int(y) <= 2030 and 1 <= int(mo) <= 12 and 1 <= int(d) <= 31:
+                    data['date'] = f"{y}-{mo.zfill(2)}-{d.zfill(2)}"
+                    # Try to find time after the date
+                    rest = norm[m.end():]
+                    tm = re.search(r'(\d{1,2})\s*:\s*(\d{2})', rest)
+                    if tm:
+                        data['time'] = f"{tm.group(1).zfill(2)}:{tm.group(2)}"
+                    break
 
     # === WEIGHT (斤): find the largest 2-3 digit decimal ===
     for c, r in pairs:
@@ -227,8 +261,21 @@ def parse(raw_lines):
 
 def ocr_scale_image(path):
     with open(path, 'rb') as f: img_bytes = f.read()
-    lines = asyncio.run(_ocr_image(img_bytes))
-    return {**parse(lines), 'image_path': path}
+    
+    # Windows: winrt OCR
+    if _winrt_available:
+        lines = asyncio.run(_ocr_image(img_bytes))
+        return {**parse(lines), 'image_path': path}
+    
+    # Linux/macOS: Tesseract OCR
+    if _tesseract_available:
+        img = Image.open(io.BytesIO(img_bytes))
+        raw = pytesseract.image_to_string(img, lang='chi_sim+eng')
+        lines = [l.strip() for l in raw.split('\n') if l.strip()]
+        return {**parse(lines), 'image_path': path}
+    
+    # No local OCR available
+    raise ImportError("No local OCR engine available (winrt or tesseract)")
 
 def ocr_scale_bytes(img_bytes, source='unknown'):
     lines = asyncio.run(_ocr_image(img_bytes))

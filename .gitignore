@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 db.sqlite3
 *.db
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+media/
+*.mo
+.DS_Store

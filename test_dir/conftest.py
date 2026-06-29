@@ -22,8 +22,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 # ── Initialize Django at import time (before step modules load) ──────────
-import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'web_project.settings')
+os.environ.setdefault('DJANGO_ALLOW_ASYNC_UNSAFE', 'true')
 django.setup()
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,7 +32,6 @@ def _get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]
-
 
 def _find_venv_python():
     """Auto-detect venv Python (works on Windows & Linux)."""
@@ -50,33 +49,32 @@ def _find_venv_python():
     # Fallback to system python
     return sys.executable
 
-
-# ── Django ORM fixture (session-scoped) ─────────────────────────────────────
-
-@pytest.fixture(scope='session')
-def django_orm():
-    """Provide Django ORM access for test-data setup without starting the server."""
-    import django
-    django.setup()
-    return django.apps
-
-
 # ── Session-scoped Django dev server (with test DB) ─────────────────────────
 
 @pytest.fixture(scope='session')
-def live_server_url(django_orm):
+def live_server_url():
     """Start Django dev server on a free port with a test database."""
     port = _get_free_port()
     manage_py = ROOT_DIR / 'manage.py'
     venv_python = _find_venv_python()
 
-    # Use a test database by overriding settings via env
+    # Use a separate test database
     env = os.environ.copy()
     env.setdefault('DJANGO_SETTINGS_MODULE', 'web_project.settings')
+    test_db = ROOT_DIR / 'test_db.sqlite3'
+    env['DJANGO_DATABASE_PATH'] = str(test_db)
+
+    # Create and migrate test database before starting server
+    import subprocess as _sp
+    if test_db.exists():
+        test_db.unlink()
+    _sp.run(
+        [venv_python, str(manage_py), 'migrate', '--run-syncdb'],
+        cwd=str(ROOT_DIR), env=env,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
 
     proc = subprocess.Popen(
-        [venv_python, str(manage_py), 'test', '--verbosity=0', '--failfast',
-         '--testrunner=django.test.runner.DiscoverRunner'] if False else
         [venv_python, str(manage_py), 'runserver', f'127.0.0.1:{port}', '--noreload'],
         cwd=str(ROOT_DIR),
         stdout=subprocess.DEVNULL,
@@ -86,42 +84,30 @@ def live_server_url(django_orm):
 
     url = f'http://127.0.0.1:{port}'
 
-    # Wait until server is ready
-    import urllib.request
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(url, timeout=1)
-            break
-        except Exception:
-            time.sleep(0.5)
-    else:
-        proc.terminate()
-        raise RuntimeError('Django dev server failed to start')
-
-    yield url
-
-    proc.terminate()
     try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
+        # Wait until server is ready
+        import urllib.request
+        for _ in range(40):
+            try:
+                urllib.request.urlopen(url, timeout=1)
+                break
+            except Exception:
+                time.sleep(0.5)
+        else:
+            proc.terminate()
+            raise RuntimeError('Django dev server failed to start')
 
-
-# ── DB helpers for fast test-data setup ─────────────────────────────────────
-
-@pytest.fixture
-def db():
-    """Provide a Django DB cursor for direct ORM operations in tests.
-    
-    Usage in step definitions:
-        from django.contrib.auth.models import User
-        user = User.objects.create_user(username='foo', password='bar')
-    """
-    import django
-    if not django.apps.ready:
-        django.setup()
-    return django.db.connection
-
+        yield url
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        try:
+            (ROOT_DIR / 'test_db.sqlite3').unlink(missing_ok=True)
+        except Exception:
+            pass
 
 # ── Playwright browser (session-scoped) ─────────────────────────────────────
 
@@ -135,7 +121,6 @@ def browser():
             args=['--no-sandbox', '--disable-setuid-sandbox'],
         )
         yield b
-
 
 # ── Page fixture (function-scoped — fresh context per test) ─────────────────
 
@@ -151,11 +136,6 @@ def page(browser, live_server_url):
     )
     pg = context.new_page()
 
-    # Attach base_url as a property for step helpers
-    pg._base_url = live_server_url
-
-    # Enable console logging for debugging
-    pg.on('console', lambda msg: None)  # suppress in CI
 
     yield pg
 
@@ -166,7 +146,6 @@ def page(browser, live_server_url):
         pg.screenshot(path=str(screenshot_dir / f'failure_{time.time():.0f}.png'))
 
     context.close()
-
 
 # ── Failure hook ─────────────────────────────────────────────────────────────
 
@@ -180,36 +159,39 @@ def pytest_runtest_makereport(item, call):
             item.funcargs['page']._test_failed = True
 
 
-# =============================================================================
-# pytest-bdd STEP DEFINITIONS
-# (Must be in conftest.py for pytest-bdd 8.x fixture discovery)
-# =============================================================================
+# ── Step definitions (imported from steps/conftest) ──────────────────────
 
-from pytest_bdd import given, when, then, parsers
+# Imports needed by step definitions
+import re
+from pytest_bdd import given, when, then, step, parsers
 from django.contrib.auth.models import User
 from accounts.models import Post
+# Test user helpers for BDD steps
+TEST_PASSWORD = 'TestPass123!'
+TEST_USERS_CREATED = False
 
-TEST_PASSWORD='TestPass123!'
-_TEST_USERS_CREATED = False
 
-
-def _test_users():
-    global _TEST_USERS_CREATED
-    if _TEST_USERS_CREATED:
+def _ensure_test_users():
+    global TEST_USERS_CREATED
+    if TEST_USERS_CREATED:
         return
-    for uname in ['loggedin_user', 'specific_user', 'admin_user']:
-        u, c = User.objects.get_or_create(username=uname, defaults={'email': f'{uname}@test.com'})
-        if c:
-            u.set_password(TEST_PASSWORD)
-            u.save()
-    _TEST_USERS_CREATED = True
+    for username in ['loggedin_user', 'specific_user', 'admin_user']:
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={'email': f'{username}@test.com'},
+        )
+        if created:
+            user.set_password(TEST_PASSWORD)
+            user.save()
+    TEST_USERS_CREATED = True
 
 
-# --- Given ---
+
+
 
 @given('I am logged in')
-def _login(page, live_server_url):
-    _test_users()
+def _logged_in(page, live_server_url):
+    _ensure_test_users()
     page.goto(live_server_url + '/login/')
     page.wait_for_selector('input[name="username"]', state='visible')
     page.fill('input[name="username"]', 'loggedin_user')
@@ -219,43 +201,37 @@ def _login(page, live_server_url):
 
 
 @given('I am logged out')
-def _logout(page, live_server_url):
+@when('I log out')
+def _logged_out(page, live_server_url):
     page.goto(live_server_url + '/logout/')
     page.wait_for_load_state('networkidle')
 
 
-@given(parsers.parse('I am on the {page_name} page'))
-def _nav_given(page, live_server_url, page_name):
-    _nav(page, live_server_url, page_name)
-
-
-@given(parsers.parse('there is a post titled "{title}"'))
-def _create_post(title):
-    a, _ = User.objects.get_or_create(username='post_author', defaults={'email': 'post_author@test.com'})
-    Post.objects.get_or_create(title=title, defaults={'content': f'Content of {title}.', 'author': a})
-
-
-@given('there are multiple registered users')
-def _multi_users():
-    for u in ['dashboard_user1', 'dashboard_user2']:
-        User.objects.get_or_create(username=u, defaults={'email': f'{u}@test.com'})
-
-
-# --- When ---
-
-def _nav(page, live_server_url, page_name):
-    m = {'home': '/', 'login': '/login/', 'register': '/register/', 'posts': '/posts/',
-         'dashboard': '/success/', 'create post': '/posts/create/', 'weight data': '/weight-data/',
-         'users': '/users/', 'admin': '/admin/'}
-    page.goto(live_server_url + m.get(page_name.lower(), '/'))
+@when(parsers.parse('I log in as "{username}" with password "{password}"'))
+def _login_as(page, live_server_url, username, password):
+    page.goto(live_server_url + '/login/')
+    page.wait_for_selector('input[name="username"]', state='visible')
+    page.fill('input[name="username"]', username)
+    page.fill('input[name="password"]', password)
+    page.click('button[type="submit"]')
     page.wait_for_load_state('networkidle')
 
 
+@given('I am on the home page')
+@given(parsers.parse('I am on the {page_name} page'))
 @when(parsers.parse('I am on the {page_name} page'))
-def _nav_when(page, live_server_url, page_name):
-    _nav(page, live_server_url, page_name)
+def _navigate(page, live_server_url, page_name='home'):
+    PAGE_MAP = {
+        'home': '/', 'login': '/login/', 'register': '/register/',
+        'posts': '/posts/', 'dashboard': '/success/', 'create post': '/posts/create/',
+        'weight data': '/weight-data/', 'users': '/users/', 'admin': '/admin/',
+    }
+    url = PAGE_MAP.get(page_name.lower(), '/')
+    page.goto(live_server_url + url)
+    page.wait_for_load_state('networkidle')
 
 
+@given(parsers.parse('I fill in "{field}" with "{value}"'))
 @when(parsers.parse('I fill in "{field}" with "{value}"'))
 def _fill(page, field, value):
     page.wait_for_selector(f'input[name="{field}"]', state='visible')
@@ -265,16 +241,64 @@ def _fill(page, field, value):
 @when('I submit the form')
 @when('I submit the registration form')
 @when('I submit the login form')
-@when('I submit the post form')
 def _submit(page):
-    with page.expect_navigation(wait_until='networkidle', timeout=10000) as _:
-        page.click('button[type="submit"]')
-
-
-@when('I log out')
-def _logout_when(page, live_server_url):
-    page.goto(live_server_url + '/logout/')
+    page.click('button[type="submit"]')
     page.wait_for_load_state('networkidle')
+
+
+# =============================================================================
+# COMMON / ASSERTIONS
+# =============================================================================
+
+@then(parsers.parse('I should see "{text}"'))
+def _see_text(page, text):
+    loc = page.locator(f'text={text}')
+    loc.wait_for(state='visible', timeout=5000)
+    assert loc.is_visible(), f'Text "{text}" not visible'
+
+
+@then('I should be redirected to the login page')
+def _redirect_login(page):
+    page.wait_for_url('**/login/**', timeout=5000)
+
+
+@then('I should be redirected to the dashboard')
+def _redirect_dash(page):
+    page.wait_for_url('**/success/**', timeout=5000)
+
+
+@then(parsers.parse('I should be on the "{page_name}" page'))
+def _on_page(page, live_server_url, page_name):
+    PAGE_MAP = {
+        'home': '/', 'login': '/login/', 'register': '/register/',
+        'posts': '/posts/', 'dashboard': '/success/', 'create post': '/posts/create/',
+    }
+    expected = PAGE_MAP.get(page_name.lower(), '/').rstrip('/')
+    current = page.url.replace(live_server_url, '').rstrip('/')
+    assert current == expected or current.startswith(expected), f'Expected {expected}, got {current}'
+
+
+@then('the page title should contain "Posts"')
+@then(parsers.parse('the page title should contain "{text}"'))
+def _title_contains(page, text='Posts'):
+    title = page.title()
+    assert text.lower() in title.lower(), f'Title "{title}" does not contain "{text}"'
+
+
+@then(parsers.parse('the nav bar should show "{text}"'))
+@then(parsers.parse('the nav bar should display "{text}"'))
+def _nav_shows(page, text):
+    assert page.locator(f'nav:has-text("{text}")').is_visible(), f'Nav bar does not show "{text}"'
+
+
+# =============================================================================
+# POST STEPS
+# =============================================================================
+
+@given(parsers.parse('there is a post titled "{title}"'))
+def _create_post(title):
+    author, _ = User.objects.get_or_create(username='post_author', defaults={'email': 'post_author@test.com'})
+    Post.objects.get_or_create(title=title, defaults={'content': f'Content of {title}.', 'author': author})
 
 
 @when(parsers.parse('I fill the title with "{title}"'))
@@ -289,98 +313,106 @@ def _fill_content(page, content):
     page.fill('textarea[name="content"]', content)
 
 
-@when(parsers.parse('I click the post title "{title}"'))
-def _click_post(page, title):
-    page.locator(f'.post-item h3 a:has-text("{title}")').wait_for(state='visible').click()
+@when('I submit the post form')
+def _submit_post(page):
+    page.click('button[type="submit"]')
     page.wait_for_load_state('networkidle')
 
 
-# --- Then ---
-
-@then(parsers.parse('I should see "{text}"'))
-def _see(page, text):
-    l = page.locator(f'text={text}')
-    l.wait_for(state='visible', timeout=5000)
-    assert l.is_visible(), f'Text "{text}" not visible'
-
-
-@then('I should be redirected to the login page')
-def _redir_login(page):
-    page.wait_for_url('**/login/**', timeout=5000)
-
-
-@then('I should be redirected to the dashboard')
-def _redir_dash(page):
-    try:
-        page.wait_for_url('**/success/**', timeout=8000)
-    except Exception:
-        current = page.url
-        raise AssertionError(f'Expected redirect to /success/, got {current}. Body: {page.text_content("body")[:200]}')
+@when(parsers.parse('I click the post title "{title}"'))
+def _click_post(page, title):
+    link = page.locator(f'.post-item h3 a:has-text("{title}")')
+    link.wait_for(state='visible')
+    link.click()
+    page.wait_for_load_state('networkidle')
 
 
 @then(parsers.parse('I should see a post titled "{title}" in the list'))
 def _post_in_list(page, title):
-    l = page.locator(f'.post-item:has-text("{title}")')
-    l.wait_for(state='visible', timeout=5000)
-    assert l.is_visible(), f'Post "{title}" not in list'
+    loc = page.locator(f'.post-item:has-text("{title}")')
+    loc.wait_for(state='visible', timeout=5000)
+    assert loc.is_visible(), f'Post "{title}" not in list'
 
 
 @then(parsers.parse('I should see the post content "{content}"'))
 def _post_content(page, content):
-    l = page.locator(f'.post-content:has-text("{content}")')
-    l.wait_for(state='visible', timeout=3000)
-    assert l.is_visible(), f'Content "{content}" not visible'
+    loc = page.locator(f'.post-content:has-text("{content}")')
+    loc.wait_for(state='visible', timeout=3000)
+    assert loc.is_visible(), f'Content "{content}" not visible'
 
 
 @then('I should see an empty post list message')
-def _empty(page):
-    l = page.locator(':has-text("No posts yet")')
-    l.wait_for(state='visible', timeout=3000)
-    assert l.is_visible(), 'Empty post message not visible'
+def _empty_list(page):
+    loc = page.locator('.empty-row')
+    loc.wait_for(state='visible', timeout=3000)
+    assert loc.is_visible(), 'Empty post message not visible'
 
 
 @then(parsers.parse('the post "{title}" should appear before "{other}"'))
-def _order(page, title, other):
-    c = page.text_content('.post-list') or ''
-    assert c.find(title) < c.find(other), f'"{title}" should be before "{other}"'
+def _post_order(page, title, other):
+    """Check post ordering by DOM position, not string search."""
+    items = page.locator('.post-item')
+    titles = items.all_text_contents()
+    pos_title = next((i for i, t in enumerate(titles) if title in t), -1)
+    pos_other = next((i for i, t in enumerate(titles) if other in t), -1)
+    assert pos_title >= 0, f'Post "{title}" not found in list'
+    assert pos_other >= 0, f'Post "{other}" not found in list'
+    assert pos_title < pos_other, (
+        f'"{title}" (position {pos_title}) should be before '
+        f'"{other}" (position {pos_other})'
+    )
 
 
 @then('I should see pagination controls')
 def _pagination(page):
-    l = page.locator('.pagination, .page-item')
-    if l.count() == 0 and page.locator('.post-item').count() <= 10:
+    loc = page.locator('.pagination, .page-item')
+    if loc.count() == 0 and page.locator('.post-item').count() <= 10:
         return
-    assert l.is_visible(), 'Pagination not visible'
+    assert loc.is_visible(), 'Pagination not visible'
+
+
+# =============================================================================
+# DASHBOARD STEPS
+# =============================================================================
+
+@given('there are multiple registered users')
+def _multi_users():
+    for uname in ['dashboard_user1', 'dashboard_user2']:
+        User.objects.get_or_create(username=uname, defaults={'email': f'{uname}@test.com'})
 
 
 @then('I should see the users table')
-def _table(page):
-    l = page.locator('.users-table')
-    l.wait_for(state='visible', timeout=5000)
-    assert l.is_visible(), 'Users table not visible'
+def _table_visible(page):
+    loc = page.locator('.users-table')
+    loc.wait_for(state='visible', timeout=5000)
+    assert loc.is_visible(), 'Users table not visible'
 
 
 @then(parsers.parse('the table should contain the user "{username}"'))
-def _has_user(page, username):
-    l = page.locator(f'.users-table:has-text("{username}")')
-    l.wait_for(state='visible', timeout=3000)
-    assert l.is_visible(), f'User "{username}" not in table'
+def _table_has_user(page, username):
+    loc = page.locator(f'.users-table:has-text("{username}")')
+    loc.wait_for(state='visible', timeout=3000)
+    assert loc.is_visible(), f'User "{username}" not in table'
 
 
 @then('my row should be highlighted')
-def _highlight(page):
-    assert page.locator('tr.current-user').is_visible(), 'Row not highlighted'
+def _row_highlighted(page):
+    assert page.locator('tr.current-user').is_visible(), 'Current user row not highlighted'
 
 
 @then('my row should show a "You" badge')
-def _badge(page):
-    assert page.locator('.badge:has-text("You")').is_visible(), 'Badge not visible'
+def _you_badge(page):
+    assert page.locator('.badge:has-text("You")').is_visible(), '"You" badge not visible'
 
 
 @then(parsers.parse('the table should have a column "{name}"'))
-def _col(page, name):
+def _column_exists(page, name):
     assert page.locator(f'.users-table th:has-text("{name}")').is_visible(), f'Column "{name}" not found'
 
+
+# =============================================================================
+# WEIGHT DATA STEPS
+# =============================================================================
 
 @then('I should see an upload form for body measurement images')
 def _upload_form(page):
@@ -390,28 +422,32 @@ def _upload_form(page):
 
 @then('I should see a list of weight records')
 def _weight_list(page):
-    l = page.locator('table, .weight-list')
-    l.wait_for(state='visible', timeout=3000)
-    assert l.is_visible(), 'Weight list not visible'
+    loc = page.locator('table, .weight-list')
+    loc.wait_for(state='visible', timeout=3000)
+    assert loc.is_visible(), 'Weight records list not visible'
 
 
 @then('I should see measurement date values')
-def _date(page):
+def _date_col(page):
     assert page.locator('table th:has-text("Date")').is_visible(), 'Date column not visible'
 
 
 @then('I should see weight values')
-def _weight(page):
+def _weight_col(page):
     assert page.locator('table th:has-text("Weight")').is_visible(), 'Weight column not visible'
 
 
 @then('I should see BMI values')
-def _bmi(page):
+def _bmi_col(page):
     assert page.locator('table th:has-text("BMI")').is_visible(), 'BMI column not visible'
 
 
+# =============================================================================
+# ADMIN STEPS
+# =============================================================================
+
 @then('I should see "Django administration"')
-def _admin(page):
+def _admin_title(page):
     assert page.locator('text=Django administration').is_visible(), 'Admin title not visible'
 
 
@@ -425,48 +461,169 @@ def _edit_form(page):
     assert page.locator('form').is_visible(), 'Edit form not visible'
 
 
+# =============================================================================
+# I18N / LANGUAGE STEPS
+# =============================================================================
+
+@given(parsers.parse('I switch the language to "{language}"'))
+@when(parsers.parse('I switch the language to "{language}"'))
+def _switch_lang(page, language):
+    lang_map = {'Chinese': 'zh-hans', 'English': 'en'}
+    page.select_option('.lang-switcher select', lang_map.get(language, language))
+    page.wait_for_load_state('networkidle')
+
+
 @then('the language switcher should be present')
 def _lang_switcher(page):
     assert page.locator('.lang-switcher').is_visible(), 'Language switcher not visible'
 
 
-@when(parsers.parse('I switch the language to "{language}"'))
-def _switch_lang(page, language):
-    m = {'Chinese': 'zh-hans', 'English': 'en'}
-    page.select_option('.lang-switcher select', m.get(language, language))
-    page.wait_for_load_state('networkidle')
-
-
 @then(parsers.parse('the page should display text in {language}'))
 def _page_lang(page, language):
     checks = {'Chinese': ['首页', '帖子', '登录'], 'English': ['Home', 'Posts', 'Login']}
-    for p in checks.get(language, checks['English']):
-        if page.locator(f'text={p}').is_visible():
+    for phrase in checks.get(language, checks['English']):
+        if page.locator(f'text={phrase}').first.is_visible():
             return
     raise AssertionError(f'No {language} text found')
 
 
-@then('the page title should contain "Posts"')
-@then(parsers.parse('the page title should contain "{text}"'))
-def _title_contains(page, text='Posts'):
-    t = page.title()
-    assert text.lower() in t.lower(), f'Title "{t}" does not contain "{text}"'
+# =============================================================================
+# ADDITIONAL STEPS (merged from auth_steps.py, post_steps.py, dashboard_steps.py,
+# weight_steps.py, common_steps.py)
+# =============================================================================
+
+# --- Auth specific ---
+
+@then(parsers.parse('I should see a welcome message containing "{text}"'))
+def _welcome_message(page, text):
+    assert page.locator(f'.hero:has-text("{text}")').is_visible(), \
+        f'Welcome message with "{text}" not visible'
 
 
-@then(parsers.parse('the nav bar should show "{text}"'))
-def _nav_shows(page, text):
-    assert page.locator(f'nav:has-text("{text}")').is_visible(), f'Nav bar does not show "{text}"'
+@then('I should see a login error message')
+def _login_error_visible(page):
+    locator = page.locator('.alert-error').first
+    locator.wait_for(state='visible', timeout=3000)
+    assert locator.is_visible(), 'Login error not visible'
 
 
-@then(parsers.parse('I should be on the "{page_name}" page'))
-def _on_page(page, live_server_url, page_name):
-    m = {'home': '/', 'login': '/login/', 'register': '/register/', 'posts': '/posts/',
-         'dashboard': '/success/', 'create post': '/posts/create/'}
-    expected = m.get(page_name.lower(), '/').rstrip('/')
-    current = page.url.replace(live_server_url, '').rstrip('/')
-    if current != expected and not current.startswith(expected):
-        # Debug: print page content on failure
-        body = page.text_content('body') or ''
-        raise AssertionError(f'Expected {expected}, got {current}. Page snippet: {body[:300]}')
-    assert True
+@then('I should see a registration error')
+def _register_error_visible(page):
+    locators = ['.alert-error', '.error-text', '.errorlist']
+    for sel in locators:
+        if page.locator(sel).is_visible():
+            return
+    raise AssertionError('No registration error visible')
+
+
+@then(parsers.parse('the dashboard should display my username "{username}"'))
+def _dashboard_shows_username(page, username):
+    content_text = page.text_content('.hero') or ''
+    assert username in content_text, f'Username "{username}" not in dashboard'
+
+
+# --- Post specific ---
+
+@then(parsers.parse('I should see the author "{username}" on the post'))
+def _author_on_post(page, username):
+    detail = page.locator('.post-detail-section')
+    assert detail.locator(f':has-text("{username}")').is_visible(), \
+        f'Author "{username}" not on post detail'
+
+
+@then(parsers.parse('the post list should contain {count:d} posts'))
+def _post_count(page, count):
+    items = page.locator('.post-item')
+    assert items.count() == count, f'Expected {count} posts, got {items.count()}'
+
+
+# --- Dashboard specific ---
+
+@then('the IP Address column should show a value')
+def _ip_column_populated(page):
+    cells = page.locator('.users-table td').all_text_contents()
+    has_ip = any('.' in cell and cell.count('.') == 3 for cell in cells)
+    assert has_ip, f'No IP address found in table cells: {cells[:10]}'
+
+
+@then('the Login Location column should show a location')
+def _location_column_populated(page):
+    cells = page.locator('.users-table td').all_text_contents()
+    non_empty = [c for c in cells if len(c.strip()) > 2 and c.strip() != '—']
+    assert len(non_empty) > 0, 'No location values found in table'
+
+
+# --- Weight specific ---
+
+@when(parsers.parse('I upload the image "{filename}"'))
+def _upload_image(page, live_server_url, filename):
+    file_input = page.locator('input[type="file"]')
+    file_input.wait_for(state='visible')
+    file_input.set_input_files(filename)
+    page.click('button[type="submit"]')
+    page.wait_for_load_state('networkidle')
+
+
+# --- Click / UI actions ---
+
+@when('I click the logo')
+def _click_logo(page):
+    page.click('.logo')
+
+
+@when(parsers.parse('I click "{link_text}"'))
+def _click_link(page, link_text):
+    link = page.locator(f'a:has-text("{link_text}")')
+    link.wait_for(state='visible')
+    link.click()
+
+
+@when(parsers.parse('I click the nav link "{link_text}"'))
+@when(parsers.parse('I click the "{button_text}" button'))
+@when(parsers.parse('I click the user "{username}"'))
+def _click_element(page, link_text=None, button_text=None, username=None):
+    text = link_text or button_text or username
+    sel = 'nav a' if link_text else ('button' if button_text else 'a')
+    link = page.locator(f'{sel}:has-text("{text}")')
+    link.wait_for(state='visible')
+    link.click()
+    page.wait_for_load_state('networkidle')
+
+
+@when('I click the language switcher')
+def _click_lang_switcher(page):
+    page.click('.lang-switcher select')
+
+
+# --- Assertions ---
+
+@then(parsers.parse('I should not see "{text}"'))
+def _should_not_see_text(page, text):
+    assert page.locator(f'text={text}').count() == 0, \
+        f'Text "{text}" should NOT be visible but it is'
+
+
+@then(parsers.parse('the current page URL should contain "{fragment}"'))
+def _url_contains(page, fragment):
+    assert fragment in page.url, f'URL {page.url} does not contain "{fragment}"'
+
+
+# --- Multi-page assertions ---
+
+@then(parsers.parse('every page should have a working nav bar with "{link}"'))
+def _every_page_nav(page, live_server_url, link):
+    urls = ['/', '/login/', '/register/', '/posts/']
+    for url in urls:
+        page.goto(live_server_url + url)
+        page.wait_for_load_state('networkidle')
+        assert page.locator(f'nav a:has-text("{link}")').is_visible(), \
+            f'Nav link "{link}" missing on {url}'
+
+
+# --- Textarea helper ---
+
+@when(parsers.parse('I fill textarea "{field}" with "{value}"'))
+def _fill_textarea(page, field, value):
+    page.wait_for_selector(f'textarea[name="{field}"]', state='visible')
+    page.fill(f'textarea[name="{field}"]', value)
 

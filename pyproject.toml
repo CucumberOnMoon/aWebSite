@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "aWebSite"
+version = "0.1.0"
+description = "Django web application with BDD + Playwright testing"
+requires-python = ">=3.11"
+dependencies = [
+    "Django>=6.0,<7.0",
+    "python-dotenv>=1.0",
+    "Pillow>=10.0",
+    "requests>=2.31",
+    "pytest>=8.0",
+    "pytest-bdd>=8.0",
+    "playwright>=1.40",
+    "reportlab>=4.0",
+    "SpeechRecognition>=3.10",
+    "pytesseract>=0.3.10",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test_dir"]
+python_files = ["test_*.py"]
+addopts = "-p no:warnings --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "smoke: quick smoke tests",
+    "auth: authentication-related tests",
+    "posts: blog post tests",
+    "weight: body measurement tests",
+    "i18n: language/internationalization tests",
+    "admin: admin interface tests",
+]

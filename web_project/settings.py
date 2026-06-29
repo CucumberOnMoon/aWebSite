@@ -24,10 +24,10 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!*-+jn_vlj^6_%y(u)q4ljdip0f+xqt7$aixk7g^dgr-965o)%'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-!*-+jn_vlj^6_%y(u)q4ljdip0f+xqt7$aixk7g^dgr-965o)%')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '192.168.71.92']
 
@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'web_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DJANGO_DATABASE_PATH', str(BASE_DIR / 'db.sqlite3')),
     }
 }
 

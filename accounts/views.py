@@ -18,6 +18,12 @@ import speech_recognition as sr
 from .models import UserProfile, Post, Comment, BodyMeasurement
 
 
+import re
+import time
+from datetime import datetime
+from django.utils import timezone
+
+
 def admin_required(view_func):
     """Decorator: user must be logged in AND have admin role."""
     @wraps(view_func)
@@ -52,7 +58,6 @@ def _geo_request(url, timeout=5):
         except Exception as e:
             last_error = e
             if attempt < 2:
-                import time
                 time.sleep(0.5)  # Brief delay before retry
     raise last_error
 
@@ -137,218 +142,205 @@ def weight_delete(request, pk):
     return JsonResponse({'success': True})
 
 
+
+# ── Weight upload helpers ────────────────────────────────────────────────────
+
+# Common field map for OCR and vision API data
+_FIELD_MAP = {
+    'weight_jin': ('weight_jin', float),
+    'bmi': ('bmi', float),
+    'body_fat_pct': ('body_fat_pct', float),
+    'body_fat_score': ('body_fat_score', lambda v: int(float(v))),
+    'skeletal_muscle_jin': ('skeletal_muscle_jin', float),
+    'visceral_fat_level': ('visceral_fat_level', float),
+    'arms_legs_muscle_index': ('arms_legs_muscle_index', float),
+    'waist_hip_ratio': ('waist_hip_ratio', float),
+    'body_water_pct': ('body_water_pct', float),
+    'protein_pct': ('protein_pct', float),
+    'bone_mineral_jin': ('bone_mineral_jin', float),
+    'fat_free_mass_jin': ('fat_free_mass_jin', float),
+    'basal_metabolism_kcal': ('basal_metabolism_kcal', lambda v: int(float(v))),
+    'body_age': ('body_age', lambda v: int(float(v))),
+    'heart_rate': ('heart_rate', lambda v: int(float(v))),
+    'body_type': ('body_type', str),
+    'body_shape': ('body_shape', str),
+}
+
+_RESPONSE_FIELDS = [
+    'weight_jin', 'bmi', 'body_fat_pct', 'body_fat_score',
+    'skeletal_muscle_jin', 'visceral_fat_level',
+    'arms_legs_muscle_index', 'waist_hip_ratio',
+    'body_water_pct', 'protein_pct', 'fat_free_mass_jin',
+    'basal_metabolism_kcal', 'body_age', 'heart_rate',
+]
+
+
+def _parse_ocr_date(ocr_result, default_dt):
+    """Extract datetime from OCR result, falling back to default_dt."""
+    ocr_date = ocr_result.get('date')
+    ocr_time = ocr_result.get('time')
+    if ocr_date:
+        try:
+            if ocr_time:
+                dt = datetime.strptime(f'{ocr_date} {ocr_time}', '%Y-%m-%d %H:%M')
+            else:
+                dt = datetime.strptime(ocr_date, '%Y-%m-%d')
+            return dt.replace(tzinfo=timezone.get_current_timezone())
+        except (ValueError, TypeError):
+            pass
+    return default_dt
+
+
+def _apply_field_map(record, data, field_map=None):
+    """Apply a dict of OCR/API data to a BodyMeasurement record."""
+    if field_map is None:
+        field_map = _FIELD_MAP
+    for ocr_key, (model_field, conv) in field_map.items():
+        val = data.get(ocr_key)
+        if val is not None:
+            try:
+                setattr(record, model_field, conv(val))
+            except (ValueError, TypeError):
+                pass
+    return record
+
+
+def _build_measurement_response(record, source, dt):
+    """Build a JSON response with all available measurement fields."""
+    resp = {
+        'success': True,
+        'source': source,
+        'id': record.id,
+        'date': dt.strftime('%Y-%m-%d %H:%M'),
+    }
+    for f in _RESPONSE_FIELDS:
+        v = getattr(record, f, None)
+        if v is not None:
+            resp[f] = str(v)
+    return JsonResponse(resp)
+
+
+def _call_vision_api(tmp_path):
+    """Call OpenRouter vision API to extract measurement data from image.
+    Returns parsed dict with field_name -> value mappings, or raises on error."""
+    import base64
+    with open(tmp_path, 'rb') as f:
+        b64 = base64.b64encode(f.read()).decode('utf-8')
+
+    api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
+    if not api_key:
+        raise ValueError('未配置API密钥')
+
+    prompt_template = (
+        '从这张体脂秤截图中提取所有健康数据，返回纯JSON格式（不要markdown、不要注释）：\n'
+        '\n'
+        '{\n'
+        '  "date": "YYYY-MM-DD",\n'
+        '  "time": "HH:MM",\n'
+        '  "weight_jin": 0.0,\n'
+        '  "bmi": 0.0,\n'
+        '  "body_fat_pct": 0.0,\n'
+        '  "body_fat_score": 0,\n'
+        '  "skeletal_muscle_jin": 0.0,\n'
+        '  "visceral_fat_level": 0.0,\n'
+        '  "arms_legs_muscle_index": 0.0,\n'
+        '  "waist_hip_ratio": 0.00,\n'
+        '  "body_water_pct": 0.0,\n'
+        '  "protein_pct": 0.0,\n'
+        '  "bone_mineral_jin": 0.00,\n'
+        '  "fat_free_mass_jin": 0.0,\n'
+        '  "basal_metabolism_kcal": 0,\n'
+        '  "body_age": 0,\n'
+        '  "heart_rate": 0,\n'
+        '  "body_type": "",\n'
+        '  "body_shape": ""\n'
+        '}\n'
+        '如果某个数据不存在，设为null。日期时间从图片左上角读取。'
+    )
+
+    resp = requests.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+        },
+        json={
+            'model': 'nvidia/nemotron-nano-12b-v2-vl:free',
+            'messages': [{
+                'role': 'user',
+                'content': [
+                    {'type': 'text', 'text': prompt_template},
+                    {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{b64}'}},
+                ],
+            }],
+            'max_tokens': 1024,
+        },
+        timeout=60,
+    )
+
+    if resp.status_code != 200:
+        raise RuntimeError(f'API请求失败: {resp.status_code}')
+
+    result = resp.json()
+    content = result['choices'][0]['message']['content']
+    json_match = re.search(r'\{[\s\S]*\}', content)
+    if not json_match:
+        raise ValueError('无法解析返回数据')
+
+    return json.loads(json_match.group())
+
+
+
 @csrf_exempt
 def weight_upload(request):
     """Upload a body measurement screenshot, extract data via local OCR (primary) or vision API (fallback)."""
     if request.method != 'POST' or not request.FILES.get('image'):
         return JsonResponse({'error': '请上传图片'}, status=400)
-    
+
     image = request.FILES['image']
-    
+
     # Save image temporarily
     suffix = os.path.splitext(image.name)[1] or '.jpg'
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         for chunk in image.chunks():
             tmp.write(chunk)
         tmp_path = tmp.name
-    
-    from datetime import datetime
-    from django.utils import timezone
-    
+
     try:
-        # ========== STEP 1: Try local Windows OCR (free, unlimited) ==========
+        # ========== STEP 1: Try local OCR ==========
         from .scale_ocr import ocr_scale_image
         import logging
         logger = logging.getLogger(__name__)
-        
+
         try:
             ocr_result = ocr_scale_image(tmp_path)
             logger.info(f"Local OCR result: {ocr_result}")
         except ImportError:
             logger.info("winrt not available, skipping local OCR")
             ocr_result = {}
-        
-        # Log raw OCR lines if date was not detected
+
         if ocr_result.get('raw_lines') and not ocr_result.get('date'):
             logger.warning(f"OCR raw lines (no date found): {ocr_result['raw_lines']}")
-        
-        dt = datetime.now().replace(tzinfo=timezone.get_current_timezone())
-        
-        # Use OCR-extracted date if available
-        ocr_date = ocr_result.get('date')
-        ocr_time = ocr_result.get('time')
-        if ocr_date:
-            try:
-                if ocr_time:
-                    dt = datetime.strptime(f'{ocr_date} {ocr_time}', '%Y-%m-%d %H:%M')
-                else:
-                    dt = datetime.strptime(ocr_date, '%Y-%m-%d')
-                dt = dt.replace(tzinfo=timezone.get_current_timezone())
-            except (ValueError, TypeError):
-                pass
-        
+
+        dt = _parse_ocr_date(ocr_result, datetime.now().replace(tzinfo=timezone.get_current_timezone()))
+
         record = BodyMeasurement(measured_at=dt)
-        
-        # Map OCR fields to Django model fields (OCR returns values in 斤 already)
-        field_map = {
-            'weight_jin': ('weight_jin', float),
-            'bmi': ('bmi', float),
-            'body_fat_pct': ('body_fat_pct', float),
-            'body_fat_score': ('body_fat_score', lambda v: int(float(v))),
-            'skeletal_muscle_jin': ('skeletal_muscle_jin', float),
-            'visceral_fat_level': ('visceral_fat_level', float),
-            'arms_legs_muscle_index': ('arms_legs_muscle_index', float),
-            'waist_hip_ratio': ('waist_hip_ratio', float),
-            'body_water_pct': ('body_water_pct', float),
-            'protein_pct': ('protein_pct', float),
-            'fat_free_mass_jin': ('fat_free_mass_jin', float),
-            'basal_metabolism_kcal': ('basal_metabolism_kcal', lambda v: int(float(v))),
-            'body_age': ('body_age', lambda v: int(float(v))),
-            'heart_rate': ('heart_rate', lambda v: int(float(v))),
-        }
-        for ocr_key, (model_field, conv) in field_map.items():
-            val = ocr_result.get(ocr_key)
-            if val is not None:
-                try:
-                    setattr(record, model_field, conv(val))
-                except (ValueError, TypeError):
-                    pass
-        
-        # Check if we have at least weight data
-        has_weight = bool(ocr_result.get('weight_jin'))
-        
-        if has_weight:
+        _apply_field_map(record, ocr_result)
+
+        if ocr_result.get('weight_jin'):
             record.save()
-            # Build response with all available fields
-            resp = {
-                'success': True,
-                'source': 'local_ocr',
-                'id': record.id,
-                'date': dt.strftime('%Y-%m-%d %H:%M'),
-            }
-            for f in ['weight_jin', 'bmi', 'body_fat_pct', 'body_fat_score',
-                       'skeletal_muscle_jin', 'visceral_fat_level',
-                       'arms_legs_muscle_index', 'waist_hip_ratio',
-                       'body_water_pct', 'protein_pct', 'fat_free_mass_jin',
-                       'basal_metabolism_kcal', 'body_age', 'heart_rate']:
-                v = getattr(record, f, None)
-                if v is not None:
-                    resp[f] = str(v)
-            return JsonResponse(resp)
-        
-        # ========== STEP 2: Fallback to OpenRouter vision API ==========
-        import base64
-        with open(tmp_path, 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode('utf-8')
-        
-        # Get API key
-        api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
-        if not api_key:
-            return JsonResponse({'error': '未配置API密钥'}, status=500)
-        
-        # Call OpenRouter vision API
-        resp = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json',
-            },
-            json={
-                'model': 'nvidia/nemotron-nano-12b-v2-vl:free',
-                'messages': [{
-                    'role': 'user',
-                    'content': [
-                        {'type': 'text', 'text': (
-                            '从这张体脂秤截图中提取所有健康数据，返回纯JSON格式（不要markdown、不要注释）：\n'
-                            '{\n'
-                            '  "date": "YYYY-MM-DD",\n'
-                            '  "time": "HH:MM",\n'
-                            '  "weight_jin": 0.0,\n'
-                            '  "bmi": 0.0,\n'
-                            '  "body_fat_pct": 0.0,\n'
-                            '  "body_fat_score": 0,\n'
-                            '  "skeletal_muscle_jin": 0.0,\n'
-                            '  "visceral_fat_level": 0.0,\n'
-                            '  "arms_legs_muscle_index": 0.0,\n'
-                            '  "waist_hip_ratio": 0.00,\n'
-                            '  "body_water_pct": 0.0,\n'
-                            '  "protein_pct": 0.0,\n'
-                            '  "bone_mineral_jin": 0.00,\n'
-                            '  "fat_free_mass_jin": 0.0,\n'
-                            '  "basal_metabolism_kcal": 0,\n'
-                            '  "body_age": 0,\n'
-                            '  "heart_rate": 0,\n'
-                            '  "body_type": "",\n'
-                            '  "body_shape": ""\n'
-                            '}\n'
-                            '如果某个数据不存在，设为null。日期时间从图片左上角读取。'
-                        )},
-                        {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{b64}'}},
-                    ],
-                }],
-                'max_tokens': 1024,
-            },
-            timeout=60,
-        )
-        
-        if resp.status_code != 200:
-            return JsonResponse({'error': f'API请求失败: {resp.status_code}'}, status=500)
-        
-        result = resp.json()
-        content = result['choices'][0]['message']['content']
-        
-        # Parse JSON from response (handle markdown-wrapped JSON)
-        import re
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        if not json_match:
-            return JsonResponse({'error': '无法解析返回数据'}, status=500)
-        
-        data = json.loads(json_match.group())
-        
-        # Parse date/time
-        from datetime import datetime
-        from django.utils import timezone
-        
-        date_str = data.get('date', '')
-        time_str = data.get('time', '')
-        if date_str and time_str:
-            dt = datetime.strptime(f'{date_str} {time_str}', '%Y-%m-%d %H:%M')
-        elif date_str:
-            dt = datetime.strptime(date_str, '%Y-%m-%d')
-        else:
-            dt = datetime.now()
-        dt = dt.replace(tzinfo=timezone.get_current_timezone())
-        
-        # Create record (only save fields that have values)
+            return _build_measurement_response(record, 'local_ocr', dt)
+
+        # ========== STEP 2: Fallback to vision API ==========
+        data = _call_vision_api(tmp_path)
+
+        dt = _parse_ocr_date(data, datetime.now().replace(tzinfo=timezone.get_current_timezone()))
         record = BodyMeasurement(measured_at=dt)
-        field_map = {
-            'weight_jin': float, 'bmi': float, 'body_fat_pct': float,
-            'body_fat_score': lambda v: int(float(v)) if v is not None else None,
-            'skeletal_muscle_jin': float, 'visceral_fat_level': float,
-            'arms_legs_muscle_index': float, 'waist_hip_ratio': float,
-            'body_water_pct': float, 'protein_pct': float, 'bone_mineral_jin': float,
-            'fat_free_mass_jin': float, 'basal_metabolism_kcal': lambda v: int(float(v)) if v is not None else None,
-            'body_age': lambda v: int(float(v)) if v is not None else None,
-            'heart_rate': lambda v: int(float(v)) if v is not None else None,
-            'body_type': str, 'body_shape': str,
-        }
-        for field, conv in field_map.items():
-            val = data.get(field)
-            if val is not None:
-                try:
-                    setattr(record, field, conv(val))
-                except (ValueError, TypeError):
-                    pass
-        
+        _apply_field_map(record, data)
+
         record.save()
-        
-        return JsonResponse({
-            'success': True,
-            'id': record.id,
-            'date': dt.strftime('%Y-%m-%d %H:%M'),
-            'weight': str(record.weight_jin),
-        })
-    
+        return _build_measurement_response(record, 'vision_api', dt)
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     finally:
@@ -796,7 +788,6 @@ def _split_for_translation(text, max_len):
             continue
 
         # Split by sentences using both English and Chinese punctuation
-        import re
         sentences = re.split(r'(?<=[.!?！？。])\s+', chunk)
         sentences = [s.strip() for s in sentences if s.strip()]
 
@@ -859,3 +850,260 @@ def translate_post(request, post_id):
         'content': translated_content,
         'lang': target,
     })
+
+
+import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
+
+WORKOUT_DB_CMD = "/home/howard/.local/bin/workout-db"
+
+
+def _run_workout_query(sql):
+    """Run a SQL query against DuckDB, works both locally (via workout-db SSH) and on VPS (direct)."""
+    import csv
+    import io
+    import shutil
+    import subprocess
+
+    # Check if workout-db wrapper exists (WSL), else use direct duckdb (VPS)
+    if shutil.which("workout-db") or os.path.exists(WORKOUT_DB_CMD):
+        try:
+            result = subprocess.run(
+                [WORKOUT_DB_CMD, sql],
+                capture_output=True, text=True, timeout=30,
+                env={**os.environ, 'DISPLAY': 'none'}
+            )
+            if result.returncode != 0:
+                logger.warning(f"workout-db stderr: {result.stderr}")
+                return None
+            return result.stdout
+        except subprocess.TimeoutExpired:
+            logger.error("workout-db query timed out")
+            return None
+        except FileNotFoundError:
+            logger.warning("workout-db not found, trying direct duckdb")
+    
+    # Direct duckdb (runs on VPS where DB is local)
+    try:
+        result = subprocess.run(
+            ['duckdb', '/root/data/workout.db', '-csv', '-c', sql],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            logger.warning(f"duckdb stderr: {result.stderr}")
+            return None
+        # DuckDB -csv output: header line, then data lines
+        return result.stdout
+    except Exception as e:
+        logger.error(f"duckdb failed: {e}")
+        return None
+
+
+def fitness_stats(request):
+    """Display fitness training statistics with Highcharts."""
+    context = {}
+
+    # Query 1: Session overview (date, type, sets, volume, duration)
+    sql_sessions = """
+        SELECT w.date, w.type, w.duration_min,
+               COUNT(s.id) as sets,
+               ROUND(SUM(s.weight_kg * s.reps)) as total_volume
+        FROM workouts w
+        JOIN sets s ON w.id = s.workout_id
+        GROUP BY w.id, w.date, w.type, w.duration_min
+        ORDER BY w.date;
+    """
+    raw = _run_workout_query(sql_sessions)
+    if raw:
+        # Parse DuckDB ascii table output into structured data
+        sessions = _parse_duckdb_table(raw)
+        context['sessions_json'] = json.dumps(sessions, ensure_ascii=False)
+        context['sessions_count'] = len(sessions)
+        if sessions:
+            context['total_volume'] = sum(s.get('total_volume', 0) or 0 for s in sessions)
+            context['total_sets'] = sum(s.get('sets', 0) or 0 for s in sessions)
+    else:
+        context['sessions_json'] = '[]'
+        context['sessions_count'] = 0
+
+    # Query 2: Per-exercise stats
+    sql_exercises = """
+        SELECT e.name, e.category,
+               COUNT(DISTINCT w.id) as sessions,
+               COUNT(s.id) as total_sets,
+               ROUND(AVG(s.weight_kg), 1) as avg_weight,
+               MAX(s.weight_kg) as max_weight,
+               ROUND(SUM(s.weight_kg * s.reps)) as total_volume
+        FROM exercises e
+        LEFT JOIN sets s ON e.id = s.exercise_id
+        LEFT JOIN workouts w ON s.workout_id = w.id
+        GROUP BY e.id, e.name, e.category
+        HAVING total_sets > 0
+        ORDER BY total_volume DESC;
+    """
+    raw2 = _run_workout_query(sql_exercises)
+    if raw2:
+        context['exercises_json'] = json.dumps(_parse_duckdb_table(raw2), ensure_ascii=False)
+    else:
+        context['exercises_json'] = '[]'
+
+    # Query 3: Category breakdown
+    sql_cats = """
+        SELECT e.category,
+               COUNT(DISTINCT w.id) as sessions,
+               COUNT(s.id) as total_sets,
+               ROUND(SUM(s.weight_kg * s.reps)) as total_volume
+        FROM exercises e
+        LEFT JOIN sets s ON e.id = s.exercise_id
+        LEFT JOIN workouts w ON s.workout_id = w.id
+        GROUP BY e.category
+        HAVING total_sets > 0
+        ORDER BY total_volume DESC;
+    """
+    raw3 = _run_workout_query(sql_cats)
+    if raw3:
+        context['categories_json'] = json.dumps(_parse_duckdb_table(raw3), ensure_ascii=False)
+    else:
+        context['categories_json'] = '[]'
+
+    # Query 4: Progressive overload for all exercises
+    sql_progress = """
+        SELECT e.name, e.category, w.date,
+               MAX(s.weight_kg) as max_weight,
+               ROUND(SUM(s.weight_kg * s.reps)) as total_volume,
+               COUNT(s.id) as sets
+        FROM workouts w
+        JOIN sets s ON w.id = s.workout_id
+        JOIN exercises e ON s.exercise_id = e.id
+        GROUP BY e.id, e.name, e.category, w.date
+        ORDER BY e.name, w.date;
+    """
+    raw4 = _run_workout_query(sql_progress)
+    if raw4:
+        context['progress_json'] = json.dumps(_parse_duckdb_table(raw4), ensure_ascii=False)
+    else:
+        context['progress_json'] = '[]'
+
+    # Query 5: Recent detailed sessions
+    sql_recent = """
+        SELECT w.date, w.type, w.duration_min, w.note,
+               e.name as exercise, s.set_number, s.weight_kg, s.reps
+        FROM workouts w
+        JOIN sets s ON w.id = s.workout_id
+        JOIN exercises e ON s.exercise_id = e.id
+        WHERE w.id IN (
+            SELECT id FROM workouts ORDER BY date DESC LIMIT 5
+        )
+        ORDER BY w.date DESC, w.id, e.id, s.set_number;
+    """
+    raw5 = _run_workout_query(sql_recent)
+    if raw5:
+        rows = _parse_duckdb_table(raw5)
+        # Group by session
+        from collections import defaultdict
+        grouped = defaultdict(lambda: {'date': '', 'type': '', 'duration_min': None, 'note': '', 'exercises': defaultdict(list)})
+        for r in rows:
+            key = f"{r['date']}_{r['type']}"
+            grouped[key]['date'] = r['date']
+            grouped[key]['type'] = r['type']
+            grouped[key]['duration_min'] = r.get('duration_min')
+            grouped[key]['note'] = r.get('note', '') or ''
+            grouped[key]['exercises'][r['exercise']].append({
+                'set': r['set_number'],
+                'weight': r['weight_kg'],
+                'reps': r['reps'],
+            })
+        # Convert to list sorted by date desc
+        recent_list = []
+        for key in sorted(grouped.keys(), reverse=True):
+            g = grouped[key]
+            ex_list = []
+            for ename, sets in g['exercises'].items():
+                ex_list.append({
+                    'name': ename,
+                    'sets': sets,
+                })
+            recent_list.append({
+                'date': g['date'],
+                'type': g['type'],
+                'duration_min': g['duration_min'],
+                'note': g['note'][:100] if g['note'] else '',
+                'exercises': ex_list,
+            })
+        context['recent_json'] = json.dumps(recent_list, ensure_ascii=False)
+    else:
+        context['recent_json'] = '[]'
+
+    return render(request, 'accounts/fitness_stats.html', context)
+
+
+def _parse_duckdb_table(text):
+    """Parse DuckDB output into list of dicts. Handles both ascii-table and -csv formats."""
+    import csv
+    import io
+    import re
+
+    lines = text.strip().split('\n')
+    
+    # Detect format: if first non-empty line starts with │ or ┌, it's ascii-table
+    first_data = next((l for l in lines if l.strip()), '')
+    if first_data.startswith('│') or first_data.startswith('┌') or '│' in first_data:
+        return _parse_ascii_table(text)
+    
+    # Otherwise try CSV format
+    reader = csv.DictReader(io.StringIO(text))
+    data = []
+    for row in reader:
+        cleaned = {}
+        for k, v in row.items():
+            key = k.lower().replace(' ', '_').replace('-', '_')
+            val = v.strip() if v else None
+            if val is not None:
+                try:
+                    if '.' in val:
+                        val = float(val)
+                    else:
+                        val = int(val)
+                except (ValueError, TypeError):
+                    pass
+            cleaned[key] = val
+        data.append(cleaned)
+    return data
+
+
+def _parse_ascii_table(text):
+    """Parse DuckDB CLI ascii table output (│ ─ ┐ etc) into list of dicts."""
+    lines = text.strip().split('\n')
+    data = []
+    header_found = False
+    header = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith('**') or stripped.startswith('┌') or stripped.startswith('└') or stripped.startswith('├'):
+            continue
+        if stripped.startswith('│') and '│' in stripped:
+            parts = [p.strip() for p in stripped.split('│') if p.strip()]
+            # Skip separator lines (all dashes/─)
+            if all(set(p.strip()) <= {'─', '-'} for p in stripped.split('│') if p.strip()):
+                continue
+            if not header_found:
+                header = parts
+                header_found = True
+            elif len(parts) == len(header):
+                row = {}
+                for i, h in enumerate(header):
+                    val = parts[i] if parts[i] != '' else None
+                    key = h.lower().replace(' ', '_')
+                    if val is not None:
+                        try:
+                            if '.' in val:
+                                val = float(val)
+                            else:
+                                val = int(val)
+                        except (ValueError, TypeError):
+                            pass
+                    row[key] = val
+                data.append(row)
+    return data

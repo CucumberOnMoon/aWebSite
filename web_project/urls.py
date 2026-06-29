@@ -25,6 +25,7 @@ urlpatterns = [
     path('weight-data/', views.weight_data, name='weight_data'),
     path('weight-data/upload/', views.weight_upload, name='weight_upload'),
     path('weight-data/delete/<int:pk>/', views.weight_delete, name='weight_delete'),
+    path('fitness/', views.fitness_stats, name='fitness_stats'),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+{% load i18n %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏋️ 训练统计</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/highcharts@11.4.8/highcharts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highcharts@11.4.8/modules/accessibility.min.js"></script>
+    <style>
+        :root { --bg: #0d1117; --card: #1c2128; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; overflow-x: hidden; }
+        html { overflow-x: hidden; }
+        .page { max-width: 1000px; margin: 0 auto; padding: 16px; }
+        h1 { font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .nav-back { color: var(--accent); text-decoration: none; font-size: 14px; display: inline-block; margin-bottom: 12px; }
+        .nav-back:hover { text-decoration: underline; }
+
+        /* Summary cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; text-align: center; }
+        .stat-card .num { font-size: 26px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+        .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+        /* Chart wrappers */
+        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+        .chart-box h2 { font-size: 14px; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .chart-box .hc { width: 100%; height: 280px; }
+
+        /* Table */
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: var(--border); color: var(--muted); padding: 8px 6px; text-align: left; font-weight: 600; white-space: nowrap; }
+        td { padding: 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        .session-header td { background: rgba(88,166,255,0.08); color: var(--accent); font-weight: 600; font-size: 13px; padding: 8px 6px; }
+        .ex-name { color: var(--green); font-weight: 500; }
+        .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .tag-push { background: rgba(248,81,73,0.2); color: var(--red); }
+        .tag-pull { background: rgba(210,153,34,0.2); color: var(--orange); }
+        .tag-legs { background: rgba(63,185,80,0.2); color: var(--green); }
+
+        .no-data { text-align: center; padding: 40px 16px; color: var(--muted); font-size: 14px; }
+
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+            .stat-card { padding: 10px 6px; }
+            .stat-card .num { font-size: 16px; word-break: break-all; }
+            .stat-card .label { font-size: 10px; }
+            .chart-box .hc { height: 200px; }
+            .chart-box { padding: 10px; }
+            .page { padding: 8px; max-width: 100vw; overflow-x: hidden; }
+            h1 { font-size: 16px; }
+            table { font-size: 10px; }
+            th, td { padding: 4px 3px; }
+            td:last-child { white-space: normal; word-break: break-word; }
+            .ex-name { white-space: nowrap; }
+            .nav-links { display: flex !important; flex-wrap: wrap !important; gap: 2px 8px !important; font-size: 12px !important; }
+            .nav-links a, .nav-links .nav-right { display: inline !important; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <div class="nav-links">
+                <a href="/">{% trans "Home" %}</a>
+                <a href="/fitness/">🏋️ 训练统计</a>
+                <a href="/weight-data/">体重数据</a>
+                {% if user.is_authenticated and user.profile.is_admin %}
+                    <a href="/users/">{% trans "Manage Users" %}</a>
+                    <a href="/success/">{% trans "Dashboard" %}</a>
+                {% endif %}
+                {% if user.is_authenticated %}
+                    <a href="/logout/">{% trans "Logout" %}</a>
+                {% else %}
+                    <a href="/login/">{% trans "Login" %}</a>
+                {% endif %}
+                {% include "accounts/language_switcher.html" %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="page">
+        <a href="/" class="nav-back">&larr; {% trans "Back to Home" %}</a>
+        <h1>🏋️ 训练统计</h1>
+
+        {% if sessions_count == 0 %}
+            <p class="no-data">暂无训练数据。等练完第一次训练后这里就会显示统计图表。</p>
+        {% else %}
+        <!-- Summary cards -->
+        <div class="stats-grid">
+            <div class="stat-card"><div class="num">{{ sessions_count }}</div><div class="label">训练次数</div></div>
+            <div class="stat-card"><div class="num">{{ total_sets }}</div><div class="label">总组数</div></div>
+            <div class="stat-card"><div class="num">{{ total_volume }}kg</div><div class="label">总训练容量</div></div>
+        </div>
+
+        <!-- Chart 1: Volume trend -->
+        <div class="chart-box">
+            <h2>📈 训练容量趋势</h2>
+            <div id="volumeChart" class="hc"></div>
+        </div>
+
+        <!-- Chart 2: Body part breakdown -->
+        <div class="chart-box">
+            <h2>🍕 部位占比</h2>
+            <div id="categoryChart" class="hc"></div>
+        </div>
+
+        <!-- Chart 3: Progressive overload with dropdown -->
+        <div class="chart-box">
+            <h2>🏋️ <select id="exSelect" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;"></select> 渐进负荷</h2>
+            <div id="progressChart" class="hc"></div>
+        </div>
+
+        <!-- Chart 4: Exercise max weight -->
+        <div class="chart-box">
+            <h2>💪 各动作最大重量</h2>
+            <div id="prChart" class="hc"></div>
+        </div>
+
+        <!-- Recent sessions -->
+        <div class="chart-box">
+            <h2>📋 最近训练详情</h2>
+            <div class="table-wrap">
+                <table id="recentTable">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>部位</th>
+                            <th>时长</th>
+                            <th>动作</th>
+                            <th>数据</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer><p style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">{% trans "© 2026 MySite. Built with Django." %}</p></footer>
+
+{% if sessions_count > 0 %}
+<script>
+const sessions = {{ sessions_json|safe }};
+const categories = {{ categories_json|safe }};
+const exercises = {{ exercises_json|safe }};
+const recentSessions = {{ recent_json|safe }};
+const progressData = {{ progress_json|safe }};
+const C = { push: '#f85149', pull: '#d29922', legs: '#3fb950', blue: '#58a6ff', purple: '#bc8cff', cyan: '#39d2c0' };
+const exNames = [...new Set(progressData.map(d => d.name))].sort();
+
+if (typeof Highcharts === 'undefined') {
+    document.querySelectorAll('.hc').forEach(function(el) {
+        el.parentElement.innerHTML += '<p style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">\u56fe\u8868\u5e93\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u91cd\u8bd5</p>';
+    });
+} else {
+
+// ====== Chart 1: Volume trend ======
+Highcharts.chart('volumeChart', {
+    chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+    title: { text: null },
+    credits: { enabled: false },
+    legend: { enabled: false },
+    xAxis: {
+        categories: sessions.map(s => s.date),
+        labels: { style: { color: '#8b949e', fontSize: '11px' } },
+        lineColor: '#30363d',
+        tickColor: '#30363d',
+    },
+    yAxis: {
+        title: { text: '容量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
+        labels: { style: { color: '#8b949e', fontSize: '10px' }, format: '{value}' },
+        gridLineColor: '#21262d',
+    },
+    tooltip: {
+        shared: true,
+        useHTML: true,
+        formatter: function() {
+            const p = this.points[0];
+            const s = sessions[p.index];
+            return `<b>${s.date}</b><br/>
+                <span style="color:${C[s.type.toLowerCase()] || C.blue}">●</span> ${s.type}: <b>${s.total_volume}kg</b><br/>
+                组数: ${s.sets} 组${s.duration_min ? ` · ${s.duration_min}min` : ''}`;
+        },
+    },
+    plotOptions: {
+        column: {
+            borderRadius: 4,
+            groupPadding: 0.1,
+            pointPadding: 0.05,
+        },
+    },
+    series: [{
+        name: '训练容量',
+        data: sessions.map(s => ({
+            y: s.total_volume,
+            color: C[s.type.toLowerCase()] || C.blue,
+        })),
+        dataLabels: {
+            enabled: true,
+            format: '{y}kg',
+            style: { color: '#8b949e', fontSize: '10px', textOutline: 'none' },
+            inside: false,
+        },
+    }],
+    responsive: {
+        rules: [{
+            condition: { maxWidth: 600 },
+            chartOptions: {
+                yAxis: { title: { text: null } },
+                dataLabels: { enabled: false },
+            },
+        }],
+    },
+});
+
+// ====== Chart 2: Category breakdown (donut) ======
+const catColors = { 'Push': C.push, 'Pull': C.pull, 'Legs': C.legs };
+Highcharts.chart('categoryChart', {
+    chart: { type: 'pie', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+    title: { text: null },
+    credits: { enabled: false },
+    tooltip: {
+        pointFormat: '<b>{point.y}kg</b> ({point.percentage:.1f}%)<br/>共 {point.sets} 组 / {point.sessions} 次训练',
+    },
+    plotOptions: {
+        pie: {
+            innerSize: '55%',
+            allowPointSelect: true,
+            cursor: 'pointer',
+            dataLabels: {
+                enabled: true,
+                format: '<b>{point.name}</b><br/>{point.percentage:.0f}%',
+                style: { color: '#e6edf3', fontSize: '11px', textOutline: 'none' },
+                connectorColor: '#30363d',
+            },
+            showInLegend: true,
+        },
+    },
+    legend: {
+        itemStyle: { color: '#8b949e', fontSize: '12px' },
+        itemHoverStyle: { color: '#e6edf3' },
+    },
+    series: [{
+        name: '容量',
+        data: categories.map(c => ({
+            name: c.category,
+            y: Number(c.total_volume),
+            color: catColors[c.category] || C.blue,
+            sets: c.total_sets,
+            sessions: c.sessions,
+        })),
+    }],
+    responsive: {
+        rules: [{
+            condition: { maxWidth: 600 },
+            chartOptions: {
+                plotOptions: { pie: { dataLabels: { enabled: false } } },
+            },
+        }],
+    },
+});
+
+// ====== Chart 3: Dynamic progressive overload ======
+var progressChart = null;
+
+function drawProgress(exName) {
+    var data = progressData.filter(function(d) { return d.name === exName; });
+    // Remove any existing message
+    var oldMsg = document.getElementById('progMsg');
+    if (oldMsg) oldMsg.remove();
+    if (progressChart) { progressChart.destroy(); progressChart = null; }
+    
+    if (data.length < 2) {
+        var msg = data.length === 1 ? '该动作仅1次记录，再练几次就有趋势图了' : '暂无数据';
+        var div = document.getElementById('progressChart');
+        div.innerHTML = '<p id="progMsg" style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">' + msg + '</p>';
+        return;
+    }
+    progressChart = Highcharts.chart('progressChart', {
+        chart: { backgroundColor: 'transparent', style: { fontFamily: 'inherit' }, zoomType: 'x' },
+        title: { text: null },
+        credits: { enabled: false },
+        xAxis: {
+            categories: data.map(function(s) { return s.date; }),
+            labels: { style: { color: '#8b949e', fontSize: '11px' } },
+            lineColor: '#30363d',
+        },
+        yAxis: [{
+            title: { text: '重量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
+            labels: { style: { color: '#8b949e', fontSize: '10px' } },
+            gridLineColor: '#21262d',
+        }, {
+            title: { text: '容量 (kg)', style: { color: '#39d2c0', fontSize: '11px' } },
+            labels: { style: { color: '#39d2c0', fontSize: '10px' } },
+            opposite: true,
+            gridLineWidth: 0,
+        }],
+        tooltip: {
+            shared: true,
+            useHTML: true,
+            formatter: function() {
+                var pts = this.points || [];
+                var html = '<b>' + this.x + '</b><br/>';
+                pts.forEach(function(p) {
+                    html += '<span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + p.y + '</b><br/>';
+                });
+                return html;
+            },
+        },
+        plotOptions: {
+            column: { borderRadius: 3, groupPadding: 0.05, pointPadding: 0.02 },
+            line: { marker: { enabled: true, radius: 4, symbol: 'diamond' }, lineWidth: 2 },
+        },
+        series: [{
+            name: '最大重量',
+            type: 'column',
+            yAxis: 0,
+            color: 'rgba(88,166,255,0.6)',
+            borderColor: C.blue,
+            borderWidth: 1,
+            data: data.map(function(s) { return s.max_weight; }),
+            tooltip: { valueSuffix: ' kg' },
+        }, {
+            name: '总容量',
+            type: 'line',
+            yAxis: 1,
+            color: C.cyan,
+            data: data.map(function(s) { return s.total_volume; }),
+            tooltip: { valueSuffix: ' kg' },
+        }],
+        responsive: {
+            rules: [{
+                condition: { maxWidth: 600 },
+                chartOptions: { yAxis: [{ title: { text: null } }, { title: { text: null } }] },
+            }],
+        },
+    });
+}
+
+// Populate dropdown and init
+var sel = document.getElementById('exSelect');
+exNames.forEach(function(n) {
+    var opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = n;
+    sel.appendChild(opt);
+});
+if (exNames.length > 0) {
+    sel.value = '杠铃深蹲';
+    drawProgress(sel.value);
+    sel.addEventListener('change', function() {
+        drawProgress(this.value);
+    });
+}
+
+// ====== Chart 4: Exercise PRs ======
+const sortedEx = [...exercises].sort((a, b) => (b.max_weight || 0) - (a.max_weight || 0));
+const exColors = sortedEx.map(e => C[e.category?.toLowerCase()] || C.blue);
+Highcharts.chart('prChart', {
+    chart: { type: 'bar', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+    title: { text: null },
+    credits: { enabled: false },
+    legend: { enabled: false },
+    xAxis: {
+        categories: sortedEx.map(e => e.name),
+        labels: { style: { color: '#8b949e', fontSize: '10px' } },
+        lineColor: '#30363d',
+    },
+    yAxis: {
+        title: { text: '最大重量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
+        labels: { style: { color: '#8b949e', fontSize: '10px' } },
+        gridLineColor: '#21262d',
+    },
+    tooltip: {
+        useHTML: true,
+        formatter: function() {
+            const e = sortedEx[this.point.index];
+            return `<b>${e.name}</b><br/>
+                <span style="color:${exColors[this.point.index]}">●</span> 最大重量: <b>${e.max_weight}kg</b><br/>
+                平均重量: ${e.avg_weight}kg<br/>
+                总组数: ${e.total_sets} · 训练次数: ${e.sessions}<br/>
+                总容量: ${e.total_volume}kg`;
+        },
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 3,
+            dataLabels: {
+                enabled: true,
+                format: '{y}kg',
+                style: { color: '#8b949e', fontSize: '10px', textOutline: 'none' },
+                inside: false,
+            },
+        },
+    },
+    series: [{
+        data: sortedEx.map((e, i) => ({
+            y: e.max_weight,
+            color: exColors[i],
+        })),
+    }],
+    responsive: {
+        rules: [{
+            condition: { maxWidth: 600 },
+            chartOptions: {
+                dataLabels: { enabled: false },
+                xAxis: { labels: { fontSize: '9px' } },
+            },
+        }],
+    },
+});
+
+// ====== Recent sessions table ======
+function renderTable() {
+    const tbody = document.querySelector('#recentTable tbody');
+    tbody.innerHTML = '';
+    recentSessions.forEach(rs => {
+        // Session header row
+        const tag = rs.type === 'Push' ? 'tag-push' : rs.type === 'Pull' ? 'tag-pull' : 'tag-legs';
+        const emoji = rs.type === 'Push' ? '🔥' : rs.type === 'Pull' ? '💪' : '🦵';
+        const firstEx = rs.exercises[0];
+        let firstRow = true;
+        rs.exercises.forEach((ex, ei) => {
+            const setsStr = ex.sets.map(s => `${s.weight}kg×${s.reps}`).join(' · ');
+            const tr = document.createElement('tr');
+            if (firstRow) {
+                tr.innerHTML = `
+                    <td rowspan="${rs.exercises.length}" style="vertical-align:top;padding-top:8px;">${rs.date}</td>
+                    <td rowspan="${rs.exercises.length}" style="vertical-align:top;padding-top:8px;"><span class="tag ${tag}">${emoji} ${rs.type}</span></td>
+                    <td rowspan="${rs.exercises.length}" style="vertical-align:top;padding-top:8px;">${rs.duration_min || '-'}min</td>
+                    <td class="ex-name">${ex.name}</td>
+                    <td style="font-size:11px;color:var(--muted)">${setsStr}</td>
+                `;
+                firstRow = false;
+            } else {
+                tr.innerHTML = `
+                    <td class="ex-name">${ex.name}</td>
+                    <td style="font-size:11px;color:var(--muted)">${setsStr}</td>
+                `;
+            }
+            tbody.appendChild(tr);
+        });
+    });
+}
+}
+renderTable();
+{% endif %}
+</script>
+</body>
+</html>

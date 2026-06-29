@@ -187,8 +187,17 @@ def _empty_list(page):
 
 @then(parsers.parse('the post "{title}" should appear before "{other}"'))
 def _post_order(page, title, other):
-    content = page.text_content('.post-list') or ''
-    assert content.find(title) < content.find(other), f'"{title}" should be before "{other}"'
+    """Check post ordering by DOM position, not string search."""
+    items = page.locator('.post-item')
+    titles = items.all_text_contents()
+    pos_title = next((i for i, t in enumerate(titles) if title in t), -1)
+    pos_other = next((i for i, t in enumerate(titles) if other in t), -1)
+    assert pos_title >= 0, f'Post "{title}" not found in list'
+    assert pos_other >= 0, f'Post "{other}" not found in list'
+    assert pos_title < pos_other, (
+        f'"{title}" (position {pos_title}) should be before '
+        f'"{other}" (position {pos_other})'
+    )
 
 
 @then('I should see pagination controls')
@@ -312,3 +321,144 @@ def _page_lang(page, language):
         if page.locator(f'text={phrase}').is_visible():
             return
     raise AssertionError(f'No {language} text found')
+
+
+# =============================================================================
+# ADDITIONAL STEPS (merged from auth_steps.py, post_steps.py, dashboard_steps.py,
+# weight_steps.py, common_steps.py)
+# =============================================================================
+
+# --- Auth specific ---
+
+@then(parsers.parse('I should see a welcome message containing "{text}"'))
+def _welcome_message(page, text):
+    assert page.locator(f'.hero:has-text("{text}")').is_visible(), \
+        f'Welcome message with "{text}" not visible'
+
+
+@then('I should see a login error message')
+def _login_error_visible(page):
+    locator = page.locator('.alert-error')
+    locator.wait_for(state='visible', timeout=3000)
+    assert locator.is_visible(), 'Login error not visible'
+
+
+@then('I should see a registration error')
+def _register_error_visible(page):
+    locators = ['.alert-error', '.error-text', '.errorlist']
+    for sel in locators:
+        if page.locator(sel).is_visible():
+            return
+    raise AssertionError('No registration error visible')
+
+
+@then(parsers.parse('the dashboard should display my username "{username}"'))
+def _dashboard_shows_username(page, username):
+    content_text = page.text_content('.hero') or ''
+    assert username in content_text, f'Username "{username}" not in dashboard'
+
+
+# --- Post specific ---
+
+@then(parsers.parse('I should see the author "{username}" on the post'))
+def _author_on_post(page, username):
+    detail = page.locator('.post-detail-section')
+    assert detail.locator(f':has-text("{username}")').is_visible(), \
+        f'Author "{username}" not on post detail'
+
+
+@then(parsers.parse('the post list should contain {count:d} posts'))
+def _post_count(page, count):
+    items = page.locator('.post-item')
+    assert items.count() == count, f'Expected {count} posts, got {items.count()}'
+
+
+# --- Dashboard specific ---
+
+@then('the IP Address column should show a value')
+def _ip_column_populated(page):
+    cells = page.locator('.users-table td').all_text_contents()
+    has_ip = any('.' in cell and cell.count('.') == 3 for cell in cells)
+    assert has_ip, f'No IP address found in table cells: {cells[:10]}'
+
+
+@then('the Login Location column should show a location')
+def _location_column_populated(page):
+    cells = page.locator('.users-table td').all_text_contents()
+    non_empty = [c for c in cells if len(c.strip()) > 2 and c.strip() != '—']
+    assert len(non_empty) > 0, 'No location values found in table'
+
+
+# --- Weight specific ---
+
+@when(parsers.parse('I upload the image "{filename}"'))
+def _upload_image(page, live_server_url, filename):
+    file_input = page.locator('input[type="file"]')
+    file_input.wait_for(state='visible')
+    file_input.set_input_files(filename)
+    page.click('button[type="submit"]')
+    page.wait_for_load_state('networkidle')
+
+
+# --- Click / UI actions ---
+
+@when('I click the logo')
+def _click_logo(page):
+    page.click('.logo')
+
+
+@when(parsers.parse('I click "{link_text}"'))
+def _click_link(page, link_text):
+    link = page.locator(f'a:has-text("{link_text}")')
+    link.wait_for(state='visible')
+    link.click()
+
+
+@when(parsers.parse('I click the nav link "{link_text}"'))
+@when(parsers.parse('I click the "{button_text}" button'))
+@when(parsers.parse('I click the user "{username}"'))
+def _click_element(page, link_text=None, button_text=None, username=None):
+    text = link_text or button_text or username
+    sel = 'nav a' if link_text else ('button' if button_text else 'a')
+    link = page.locator(f'{sel}:has-text("{text}")')
+    link.wait_for(state='visible')
+    link.click()
+    page.wait_for_load_state('networkidle')
+
+
+@when('I click the language switcher')
+def _click_lang_switcher(page):
+    page.click('.lang-switcher select')
+
+
+# --- Assertions ---
+
+@then(parsers.parse('I should not see "{text}"'))
+def _should_not_see_text(page, text):
+    assert page.locator(f'text={text}').count() == 0, \
+        f'Text "{text}" should NOT be visible but it is'
+
+
+@then(parsers.parse('the current page URL should contain "{fragment}"'))
+def _url_contains(page, fragment):
+    assert fragment in page.url, f'URL {page.url} does not contain "{fragment}"'
+
+
+# --- Multi-page assertions ---
+
+@then(parsers.parse('every page should have a working nav bar with "{link}"'))
+def _every_page_nav(page, live_server_url, link):
+    urls = ['/', '/login/', '/register/', '/posts/']
+    for url in urls:
+        page.goto(live_server_url + url)
+        page.wait_for_load_state('networkidle')
+        assert page.locator(f'nav a:has-text("{link}")').is_visible(), \
+            f'Nav link "{link}" missing on {url}'
+
+
+# --- Textarea helper ---
+
+@when(parsers.parse('I fill textarea "{field}" with "{value}"'))
+def _fill_textarea(page, field, value):
+    page.wait_for_selector(f'textarea[name="{field}"]', state='visible')
+    page.fill(f'textarea[name="{field}"]', value)

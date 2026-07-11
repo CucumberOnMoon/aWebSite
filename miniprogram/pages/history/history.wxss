@@ -1,0 +1,22 @@
+.page {
+  height: 100vh;
+}
+
+.hist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hist-header .card-title { margin-bottom: 0; }
+
+.tag.push { background: #1f6feb22; color: #58a6ff; border-color: #1f6feb44; }
+.tag.pull { background: #3fb95022; color: #3fb950; border-color: #3fb95044; }
+.tag.legs { background: #d2992222; color: #d29922; border-color: #d2992244; }
+
+.empty {
+  text-align: center;
+  padding: 60px 0;
+  color: #8b949e;
+  font-size: 14px;
+}

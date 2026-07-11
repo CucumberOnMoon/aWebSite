@@ -1,0 +1,91 @@
+<scroll-view scroll-y class="page">
+  <!-- Hero -->
+  <view class="hero">
+    <text class="hero-title">🏋️ 训练统计</text>
+  </view>
+
+  <view wx:if="{{!hasData}}" class="empty-state">
+    <text class="text-muted">暂无训练数据</text>
+    <text class="text-muted" style="margin-top:4px">开始训练后这里会显示统计图表</text>
+  </view>
+
+  <view wx:else>
+    <!-- 统计卡片 -->
+    <view class="stat-row">
+      <view class="stat-card"><text class="num">{{totals.total_workouts}}</text><text class="label">训练次数</text></view>
+      <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">总组数</text></view>
+      <view class="stat-card"><text class="num">{{totals.total_volume}}kg</text><text class="label">总训练容量</text></view>
+    </view>
+
+    <!-- Highlights -->
+    <view class="card" wx:if="{{highlights.length}}">
+      <text class="card-title">⚡ 亮点</text>
+      <view class="hl-item" wx:for="{{highlights}}" wx:key="index">
+        <text wx:if="{{item.type === 'pr'}}" class="hl-pr">🏆 {{item.text}}</text>
+        <text wx:elif="{{item.type === 'best'}}" class="hl-best">🔥 {{item.text}}</text>
+        <text wx:else class="hl-info">📈 {{item.text}}</text>
+      </view>
+    </view>
+
+    <!-- 每周趋势（柱状图） -->
+    <view class="card">
+      <text class="card-title">📊 每周训练容量趋势</text>
+      <view class="bar-chart">
+        <view class="bar-row" wx:for="{{weeklyBars}}" wx:key="week">
+          <text class="bar-label">{{item.label}}</text>
+          <view class="bar-track">
+            <view class="bar-fill" style="width:{{item.pct}}%; background: #58a6ff;"></view>
+          </view>
+          <text class="bar-val">{{item.volK}}k</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 推拉腿分布 -->
+    <view class="card">
+      <text class="card-title">🥧 推拉腿分布</text>
+      <view class="pie-legend">
+        <view class="pie-item" wx:for="{{catBars}}" wx:key="type">
+          <view class="pie-color" style="background:{{item.color}}"></view>
+          <text class="pie-name">{{item.type}}</text>
+          <view class="pie-track">
+            <view class="pie-fill" style="width:{{item.pct}}%; background:{{item.color}}"></view>
+          </view>
+          <text class="pie-val">{{item.volK}}k ({{item.pct}}%)</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 动作详细数据 -->
+    <view class="card">
+      <text class="card-title">📋 动作详细数据</text>
+      <view class="ex-list" wx:for="{{exBars}}" wx:key="name">
+        <text class="ex-name">{{item.name}}</text>
+        <view class="ex-track">
+          <view class="ex-fill" style="width:{{item.pct}}%; background:{{item.color}}"></view>
+        </view>
+        <text class="ex-val">{{item.volK}}k</text>
+      </view>
+    </view>
+
+    <!-- 最近训练 -->
+    <view class="card">
+      <text class="card-title">🕐 最近训练</text>
+      <view class="tab-row">
+        <text class="tab {{tabFilter === 'All' ? 'active' : ''}}" bindtap="onTab" data-tab="All">全部</text>
+        <text class="tab {{tabFilter === 'Push' ? 'active' : ''}}" bindtap="onTab" data-tab="Push">推</text>
+        <text class="tab {{tabFilter === 'Pull' ? 'active' : ''}}" bindtap="onTab" data-tab="Pull">拉</text>
+        <text class="tab {{tabFilter === 'Legs' ? 'active' : ''}}" bindtap="onTab" data-tab="Legs">腿</text>
+      </view>
+      <view class="session-row" wx:for="{{filteredRecent}}" wx:key="id">
+        <text class="{{item.tagClass}}">{{item.typeL}}</text>
+        <view class="session-info">
+          <text class="session-date">{{item.date}}</text>
+          <text class="text-muted">{{item.sets}}组 · {{item.volume}}kg · {{item.duration}}分</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+</scroll-view>

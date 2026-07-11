@@ -10,3 +10,4 @@ build/
 media/
 *.mo
 .DS_Store
+project.private.config.json

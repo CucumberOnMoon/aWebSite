@@ -1,0 +1,64 @@
+.page { height: 100vh; background: #0d1117; padding-bottom: 20px; }
+.hero { text-align: center; padding: 24px 16px 8px; }
+.hero-title { font-size: 24px; font-weight: 700; color: #e6edf3; }
+.empty-state { text-align: center; padding: 80px 16px; font-size: 14px; }
+
+/* 统计卡片 */
+.stat-row { display: flex; gap: 8px; padding: 0 16px; margin-bottom: 8px; }
+.stat-card {
+  flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+  padding: 14px 8px; text-align: center;
+}
+.stat-card .num { display: block; font-size: 24px; font-weight: 700; color: #58a6ff; }
+.stat-card .label { display: block; font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+/* Highlights */
+.hl-item { padding: 6px 0; border-bottom: 1px solid #21262d; font-size: 12px; }
+.hl-item:last-child { border-bottom: none; }
+.hl-pr { color: #f5c342; }
+.hl-best { color: #f85149; }
+.hl-info { color: #58a6ff; }
+
+/* Bar chart 通用 */
+.bar-chart, .pie-legend, .ex-list { margin-top: 8px; }
+.bar-row, .pie-item, .ex-list > view {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 0; font-size: 11px;
+}
+.bar-label, .pie-name, .ex-name { width: 50px; color: #8b949e; text-align: right; font-size: 10px; }
+.bar-track, .pie-track, .ex-track {
+  flex: 1; height: 14px; background: #0d1117; border-radius: 7px; overflow: hidden;
+}
+.bar-fill, .pie-fill, .ex-fill {
+  height: 100%; border-radius: 7px; min-width: 2px; transition: width 0.3s;
+}
+.bar-val, .pie-val, .ex-val { width: 40px; color: #c9d1d9; font-weight: 500; text-align: right; font-size: 10px; }
+
+/* Pie legend */
+.pie-color {
+  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+}
+.pie-name { width: 32px; }
+.pie-val { width: 72px; }
+
+/* Tabs */
+.tab-row { display: flex; gap: 4px; margin-bottom: 8px; }
+.tab {
+  padding: 4px 12px; border-radius: 12px; font-size: 12px;
+  color: #8b949e; background: #21262d;
+}
+.tab.active { color: #fff; background: #1f6feb; }
+
+/* 最近训练行 */
+.session-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0; border-bottom: 1px solid #21262d;
+}
+.session-row:last-child { border-bottom: none; }
+.session-info { flex: 1; }
+.session-date { font-size: 13px; color: #c9d1d9; display: block; }
+
+/* 标签颜色 */
+.tag.push { background: #f8514922; color: #f85149; border-color: #f8514944; }
+.tag.pull { background: #d2992222; color: #d29922; border-color: #d2992244; }
+.tag.legs { background: #3fb95022; color: #3fb950; border-color: #3fb95044; }

@@ -1,0 +1,106 @@
+.page {
+  height: 100vh;
+}
+
+.timer-bar {
+  text-align: center;
+  padding: 20px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.timer {
+  font-size: 36px;
+  font-weight: 700;
+  color: #58a6ff;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toggle { color: #8b949e; font-size: 16px; }
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #21262d;
+  font-size: 13px;
+}
+
+.set-num {
+  color: #8b949e;
+  font-size: 12px;
+  min-width: 44px;
+}
+
+.add-set {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #21262d;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.input-group { flex: 1; }
+
+.input-label {
+  font-size: 11px;
+  color: #8b949e;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.num-input {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  height: 36px;
+  padding: 0 8px;
+  color: #c9d1d9;
+  font-size: 14px;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.num-input:focus { border-color: #1f6feb; }
+
+.btn-add {
+  background: #21262d;
+  color: #58a6ff;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  height: 38px;
+  line-height: 38px;
+  font-size: 14px;
+  text-align: center;
+  width: 100%;
+}
+
+.btn-add:active { background: #30363d; }
+
+.btn-finish {
+  background: linear-gradient(135deg, #1f6feb, #238636);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.btn-finish:active { opacity: 0.85; }

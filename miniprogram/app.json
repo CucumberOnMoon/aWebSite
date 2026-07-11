@@ -1,11 +1,37 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/login/login",
+    "pages/home/home",
+    "pages/workout/workout",
+    "pages/history/history"
   ],
   "window": {
-    "navigationBarTitleText": "Hello World",
-    "navigationBarBackgroundColor": "#4f46e5",
+    "navigationBarTitleText": "有没有你 - 健身",
+    "navigationBarBackgroundColor": "#0d1117",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f0f2f5"
-  }
+    "backgroundColor": "#0d1117",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8b949e",
+    "selectedColor": "#58a6ff",
+    "backgroundColor": "#0d1117",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "训练",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home_active.png"
+      },
+      {
+        "pagePath": "pages/history/history",
+        "text": "历史",
+        "iconPath": "images/history.png",
+        "selectedIconPath": "images/history_active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
 }

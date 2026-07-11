@@ -1,0 +1,15 @@
+{
+    "cucumber.features": [
+        "test_dir/features/*.feature"
+    ],
+    "cucumber.glue": [
+        "test_dir"
+    ],
+    "cucumber.parameterTypes": [],
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "test_dir"
+    ],
+    "pythonTestExplorer.testFramework": "pytest",
+    "testExplorer.addToEditorContextMenu": true
+}

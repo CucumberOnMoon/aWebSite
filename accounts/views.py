@@ -372,7 +372,7 @@ def register_view(request):
 def login_view(request):
     """User login view."""
     if request.user.is_authenticated:
-        return redirect('post_list')
+        return redirect('fitness_stats')
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
@@ -380,7 +380,7 @@ def login_view(request):
             login(request, user)
             update_login_info(request, user)
             messages.success(request, f'Welcome back, {user.username}!')
-            return redirect('post_list')
+            return redirect('fitness_stats')
         else:
             messages.error(request, 'Invalid username or password.')
     else:
@@ -904,14 +904,37 @@ def _run_workout_query(sql):
 def fitness_stats(request):
     """Display fitness training statistics with Highcharts."""
     context = {}
+    BODY_WEIGHT = 75
+    owner = request.user.username
+    ASSISTED = {"助力引体向上", "双杠臂屈伸(助力)"}
+
+    def adjust(row):
+        """Convert assisted weight to actual lifting weight."""
+        if row.get('name') in ASSISTED:
+            # Convert assistance values to actual bodyweight lift
+            orig_max = row.get('max_weight')
+            if 'max_weight' in row and row['max_weight']:
+                row['max_weight'] = round(BODY_WEIGHT - row['max_weight'], 1)
+            if 'avg_weight' in row and row['avg_weight']:
+                row['avg_weight'] = round(BODY_WEIGHT - row['avg_weight'], 1)
+            # Properly recompute 1RM: actual_weight * (1 + reps/30)
+            if 'estimated_1rm' in row and 'reps_at_max' in row and row.get('reps_at_max', 0) > 0:
+                actual_max = BODY_WEIGHT - (orig_max or 0)
+                row['estimated_1rm'] = round(actual_max * (1 + row['reps_at_max'] / 30.0), 1)
+            elif 'estimated_1rm' in row:
+                row['estimated_1rm'] = round(BODY_WEIGHT - row['estimated_1rm'], 1)
+        if row.get('exercise') in ASSISTED and 'weight_kg' in row and row['weight_kg']:
+            row['weight_kg'] = round(BODY_WEIGHT - row['weight_kg'], 1)
+        return row
 
     # Query 1: Session overview (date, type, sets, volume, duration)
-    sql_sessions = """
+    sql_sessions = f"""\
         SELECT w.date, w.type, w.duration_min,
                COUNT(s.id) as sets,
                ROUND(SUM(s.weight_kg * s.reps)) as total_volume
         FROM workouts w
         JOIN sets s ON w.id = s.workout_id
+        WHERE w.owner = '{owner}'
         GROUP BY w.id, w.date, w.type, w.duration_min
         ORDER BY w.date;
     """
@@ -929,7 +952,7 @@ def fitness_stats(request):
         context['sessions_count'] = 0
 
     # Query 2: Per-exercise stats
-    sql_exercises = """
+    sql_exercises = f"""\
         SELECT e.name, e.category,
                COUNT(DISTINCT w.id) as sessions,
                COUNT(s.id) as total_sets,
@@ -937,27 +960,28 @@ def fitness_stats(request):
                MAX(s.weight_kg) as max_weight,
                ROUND(SUM(s.weight_kg * s.reps)) as total_volume
         FROM exercises e
-        LEFT JOIN sets s ON e.id = s.exercise_id
-        LEFT JOIN workouts w ON s.workout_id = w.id
+        LEFT JOIN sets s ON e.id = s.exercise_id AND s.owner = '{owner}'
+        LEFT JOIN workouts w ON s.workout_id = w.id AND w.owner = '{owner}'
         GROUP BY e.id, e.name, e.category
         HAVING total_sets > 0
         ORDER BY total_volume DESC;
     """
     raw2 = _run_workout_query(sql_exercises)
     if raw2:
-        context['exercises_json'] = json.dumps(_parse_duckdb_table(raw2), ensure_ascii=False)
+        ex_data = [adjust(r) for r in _parse_duckdb_table(raw2)]
+        context['exercises_json'] = json.dumps(ex_data, ensure_ascii=False)
     else:
         context['exercises_json'] = '[]'
 
     # Query 3: Category breakdown
-    sql_cats = """
+    sql_cats = f"""\
         SELECT e.category,
                COUNT(DISTINCT w.id) as sessions,
                COUNT(s.id) as total_sets,
                ROUND(SUM(s.weight_kg * s.reps)) as total_volume
         FROM exercises e
-        LEFT JOIN sets s ON e.id = s.exercise_id
-        LEFT JOIN workouts w ON s.workout_id = w.id
+        LEFT JOIN sets s ON e.id = s.exercise_id AND s.owner = '{owner}'
+        LEFT JOIN workouts w ON s.workout_id = w.id AND w.owner = '{owner}'
         GROUP BY e.category
         HAVING total_sets > 0
         ORDER BY total_volume DESC;
@@ -968,40 +992,57 @@ def fitness_stats(request):
     else:
         context['categories_json'] = '[]'
 
-    # Query 4: Progressive overload for all exercises
-    sql_progress = """
-        SELECT e.name, e.category, w.date,
-               MAX(s.weight_kg) as max_weight,
-               ROUND(SUM(s.weight_kg * s.reps)) as total_volume,
-               COUNT(s.id) as sets
-        FROM workouts w
-        JOIN sets s ON w.id = s.workout_id
-        JOIN exercises e ON s.exercise_id = e.id
-        GROUP BY e.id, e.name, e.category, w.date
-        ORDER BY e.name, w.date;
+    # Query 4: Progressive overload with 1RM estimation
+    sql_progress = f"""\
+        WITH best_set AS (
+            SELECT e.id as exercise_id, w.id as workout_id,
+                   e.name, e.category, w.date,
+                   s.weight_kg as max_weight, s.reps as reps_at_max,
+                   ROW_NUMBER() OVER (PARTITION BY e.id, w.id ORDER BY s.weight_kg DESC, s.reps DESC) as rn
+            FROM workouts w
+            JOIN sets s ON w.id = s.workout_id
+            JOIN exercises e ON s.exercise_id = e.id
+            WHERE w.owner = '{owner}'
+        )
+        SELECT bs.name, bs.category, bs.date,
+               bs.max_weight, bs.reps_at_max,
+               ROUND(bs.max_weight * (1 + bs.reps_at_max / 30.0), 1) as estimated_1rm,
+               agg.total_volume, agg.sets
+        FROM best_set bs
+        JOIN (
+            SELECT s.exercise_id, w.id as workout_id,
+                   ROUND(SUM(s.weight_kg * s.reps)) as total_volume,
+                   COUNT(s.id) as sets
+            FROM workouts w
+            JOIN sets s ON w.id = s.workout_id
+            WHERE w.owner = '{owner}'
+            GROUP BY s.exercise_id, w.id
+        ) agg ON agg.exercise_id = bs.exercise_id AND agg.workout_id = bs.workout_id
+        WHERE bs.rn = 1
+        ORDER BY bs.name, bs.date;
     """
     raw4 = _run_workout_query(sql_progress)
     if raw4:
-        context['progress_json'] = json.dumps(_parse_duckdb_table(raw4), ensure_ascii=False)
+        prog_data = [adjust(r) for r in _parse_duckdb_table(raw4)]
+        context['progress_json'] = json.dumps(prog_data, ensure_ascii=False)
     else:
         context['progress_json'] = '[]'
 
     # Query 5: Recent detailed sessions
-    sql_recent = """
+    sql_recent = f"""\
         SELECT w.date, w.type, w.duration_min, w.note,
                e.name as exercise, s.set_number, s.weight_kg, s.reps
         FROM workouts w
         JOIN sets s ON w.id = s.workout_id
         JOIN exercises e ON s.exercise_id = e.id
         WHERE w.id IN (
-            SELECT id FROM workouts ORDER BY date DESC LIMIT 5
+            SELECT id FROM workouts WHERE owner = '{owner}' ORDER BY date DESC LIMIT 150
         )
         ORDER BY w.date DESC, w.id, e.id, s.set_number;
     """
     raw5 = _run_workout_query(sql_recent)
     if raw5:
-        rows = _parse_duckdb_table(raw5)
-        # Group by session
+        rows = [adjust(r) for r in _parse_duckdb_table(raw5)]
         from collections import defaultdict
         grouped = defaultdict(lambda: {'date': '', 'type': '', 'duration_min': None, 'note': '', 'exercises': defaultdict(list)})
         for r in rows:
@@ -1015,16 +1056,12 @@ def fitness_stats(request):
                 'weight': r['weight_kg'],
                 'reps': r['reps'],
             })
-        # Convert to list sorted by date desc
         recent_list = []
         for key in sorted(grouped.keys(), reverse=True):
             g = grouped[key]
             ex_list = []
             for ename, sets in g['exercises'].items():
-                ex_list.append({
-                    'name': ename,
-                    'sets': sets,
-                })
+                ex_list.append({'name': ename, 'sets': sets})
             recent_list.append({
                 'date': g['date'],
                 'type': g['type'],
@@ -1035,6 +1072,144 @@ def fitness_stats(request):
         context['recent_json'] = json.dumps(recent_list, ensure_ascii=False)
     else:
         context['recent_json'] = '[]'
+
+    # Query 6: Efficiency (volume per minute) per session
+    sql_efficiency = f"""\
+        SELECT w.date, w.type, ROUND(SUM(s.weight_kg * s.reps)) as total_volume,
+               w.duration_min,
+               CASE WHEN w.duration_min > 0
+                    THEN ROUND(SUM(s.weight_kg * s.reps) * 1.0 / w.duration_min, 1)
+                    ELSE NULL END as efficiency
+        FROM workouts w
+        JOIN sets s ON w.id = s.workout_id
+        WHERE w.duration_min IS NOT NULL AND w.duration_min > 0
+          AND w.owner = '{owner}'
+        GROUP BY w.id, w.date, w.type, w.duration_min
+        ORDER BY w.date;
+    """
+    raw6 = _run_workout_query(sql_efficiency)
+    if raw6:
+        context['efficiency_json'] = json.dumps(_parse_duckdb_table(raw6), ensure_ascii=False)
+    else:
+        context['efficiency_json'] = '[]'
+
+    # ====== Compute highlights ======
+    highlights = []
+    from collections import defaultdict
+
+    sessions_data = json.loads(context.get('sessions_json', '[]'))
+    exercises_data = json.loads(context.get('exercises_json', '[]'))
+    progress_data = json.loads(context.get('progress_json', '[]'))
+    recent_data = json.loads(context.get('recent_json', '[]'))
+
+    # 1. Recent PRs
+    prs = []
+    ex_progress = defaultdict(list)
+    for p in progress_data:
+        ex_progress[p['name']].append(p)
+    for name, pts in ex_progress.items():
+        if len(pts) >= 2:
+            sorted_pts = sorted(pts, key=lambda x: x['date'])
+            prev, last = sorted_pts[-2], sorted_pts[-1]
+            if last['max_weight'] > prev['max_weight']:
+                w_diff = last['max_weight'] - prev['max_weight']
+                prs.append({
+                    'name': name, 'from_w': prev['max_weight'],
+                    'to_w': last['max_weight'], 'diff': round(w_diff, 1),
+                    'category': last.get('category', ''),
+                    'from_vol': prev['total_volume'], 'to_vol': last['total_volume'],
+                })
+    prs.sort(key=lambda x: x['diff'], reverse=True)
+    if prs:
+        highlights.append({'type': 'prs', 'items': prs[:5]})
+
+    # 2. Best volume session
+    if sessions_data:
+        best = max(sessions_data, key=lambda s: s['total_volume'])
+        highlights.append({'type': 'best_session', 'date': best['date'],
+            'type_name': best['type'], 'volume': best['total_volume'],
+            'sets': best['sets'], 'duration': best.get('duration_min')})
+
+    # 3. Volume trend
+    if len(sessions_data) >= 2:
+        sorted_s = sorted(sessions_data, key=lambda s: s['date'])
+        last_s, prev_s = sorted_s[-1], sorted_s[-2]
+        pct = ((last_s['total_volume'] - prev_s['total_volume']) / prev_s['total_volume'] * 100) if prev_s['total_volume'] > 0 else 0
+        highlights.append({'type': 'trend', 'cur_vol': last_s['total_volume'],
+            'pct': round(pct, 1), 'cur_type': last_s['type'], 'cur_date': last_s['date']})
+
+    # 4. Last workout summary
+    if recent_data:
+        last_w = recent_data[0]
+        highlights.append({'type': 'last_workout', 'date': last_w['date'],
+            'type_name': last_w['type'], 'duration': last_w.get('duration_min'),
+            'note': (last_w.get('note', '') or '')[:120],
+            'ex_count': len(last_w.get('exercises', []))})
+
+    context['highlights_json'] = json.dumps(highlights, ensure_ascii=False)
+
+    # ====== Compute additional stats ======
+    extra = {}
+
+    # Training intervals (days between same type)
+    if len(sessions_data) >= 2:
+        by_type = defaultdict(list)
+        for s in sorted(sessions_data, key=lambda x: x['date']):
+            by_type[s['type']].append(s['date'])
+        intervals = {}
+        for t, dates in by_type.items():
+            if len(dates) >= 2:
+                gaps = []
+                for i in range(1, len(dates)):
+                    from datetime import datetime
+                    d1 = datetime.strptime(dates[i-1], '%Y-%m-%d')
+                    d2 = datetime.strptime(dates[i], '%Y-%m-%d')
+                    gaps.append((d2 - d1).days)
+                intervals[t] = gaps[-1]  # most recent interval
+        if intervals:
+            extra['intervals'] = intervals
+
+    # Weekly volume
+    if sessions_data:
+        from datetime import datetime
+        weekly = defaultdict(lambda: {'volume': 0, 'sessions': 0, 'types': set()})
+        for s in sessions_data:
+            d = datetime.strptime(s['date'], '%Y-%m-%d')
+            week = d.strftime('%Y-W%V')
+            weekly[week]['volume'] += s['total_volume']
+            weekly[week]['sessions'] += 1
+            weekly[week]['types'].add(s['type'])
+        if len(weekly) >= 2:
+            weeks = sorted(weekly.keys())
+            last_w, prev_w = weekly[weeks[-1]], weekly[weeks[-2]]
+            wpct = ((last_w['volume'] - prev_w['volume']) / prev_w['volume'] * 100) if prev_w['volume'] > 0 else 0
+            extra['weekly'] = {
+                'cur_vol': last_w['volume'], 'cur_sessions': last_w['sessions'],
+                'pct': round(wpct, 1), 'cur_week': weeks[-1],
+            }
+
+    # Exercise stability (weight variance across sessions)
+    if progress_data:
+        stable_names = []
+        progressing_names = []
+        for name, pts in ex_progress.items():
+            if len(pts) >= 2:
+                sorted_pts = sorted(pts, key=lambda x: x['date'])
+                weights = [p['max_weight'] for p in sorted_pts]
+                if max(weights) == min(weights):
+                    stable_names.append(name)
+                else:
+                    increasing = all(weights[i] <= weights[i+1] for i in range(len(weights)-1))
+                    if increasing:
+                        progressing_names.append(name)
+        extra['stability'] = {
+            'stable_count': len(stable_names),
+            'progressing_count': len(progressing_names),
+            'stable': stable_names[:8],
+            'progressing': progressing_names[:8],
+        }
+
+    context['extra_json'] = json.dumps(extra, ensure_ascii=False)
 
     return render(request, 'accounts/fitness_stats.html', context)
 
@@ -1075,10 +1250,19 @@ def _parse_duckdb_table(text):
 
 def _parse_ascii_table(text):
     """Parse DuckDB CLI ascii table output (│ ─ ┐ etc) into list of dicts."""
+    import re
     lines = text.strip().split('\n')
     data = []
     header_found = False
     header = []
+    _SQL_TYPE_RE = re.compile(
+        r'^(int\d*|varchar|decimal|date|timestamp(?:tz|s)?|bool|float|double|'
+        r'bigint|smallint|tinyint|char|text|blob|real|numeric|'
+        r'interval|hugeint|utinyint|usmallint|uinteger|ubigint|'
+        r'time(?:tz|s)?|varbinary|json)'
+        r'(?:\(\d+(?:,\s*\d+)?\))?$',
+        re.I
+    )
     for line in lines:
         stripped = line.strip()
         if not stripped or stripped.startswith('**') or stripped.startswith('┌') or stripped.startswith('└') or stripped.startswith('├'):
@@ -1091,7 +1275,11 @@ def _parse_ascii_table(text):
             if not header_found:
                 header = parts
                 header_found = True
-            elif len(parts) == len(header):
+                continue
+            # Skip DuckDB type row (all values look like SQL types)
+            if parts and all(_SQL_TYPE_RE.match(p.strip()) for p in parts):
+                continue
+            if len(parts) == len(header):
                 row = {}
                 for i, h in enumerate(header):
                     val = parts[i] if parts[i] != '' else None

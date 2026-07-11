@@ -2,12 +2,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-from accounts import views
+from accounts import views, api
 
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     path('admin/', admin.site.urls),
-    path('', views.home, name='home'),
+    path('', views.fitness_stats, name='home'),
     path('register/', views.register_view, name='register'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
@@ -26,6 +26,14 @@ urlpatterns = [
     path('weight-data/upload/', views.weight_upload, name='weight_upload'),
     path('weight-data/delete/<int:pk>/', views.weight_delete, name='weight_delete'),
     path('fitness/', views.fitness_stats, name='fitness_stats'),
+    path('api/fitness/workouts/', api.workout_list, name='api_workout_list'),
+    path('api/fitness/workouts/last/', api.workout_last, name='api_workout_last'),
+    path('api/fitness/workouts/<int:pk>/', api.workout_detail, name='api_workout_detail'),
+    path('api/fitness/exercises/', api.exercise_list, name='api_exercise_list'),
+    path('api/fitness/sets/', api.set_create, name='api_set_create'),
+    path('api/fitness/stats/', api.stats_overview, name='api_stats'),
+    path('api/fitness/cycle/', api.cycle_detail, name='api_cycle_detail'),
+    path('api/fitness/cycle/<int:pk>/', api.cycle_update, name='api_cycle_update'),
 ]
 
 if settings.DEBUG:

@@ -29,7 +29,8 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-!*-+jn_vlj^6_%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '192.168.71.92']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '192.168.71.92',
+                 '23.224.152.81', 'cucumberonmoon.duckdns.org']
 
 
 # Application definition
@@ -41,8 +42,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'accounts',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -140,5 +152,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Auth redirects
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/posts/'
-LOGOUT_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/fitness/'
+LOGOUT_REDIRECT_URL = '/fitness/'
+
+# Trust nginx HTTPS proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True

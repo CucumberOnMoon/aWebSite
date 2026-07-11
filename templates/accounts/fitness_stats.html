@@ -9,23 +9,104 @@
     <script src="https://cdn.jsdelivr.net/npm/highcharts@11.4.8/highcharts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/highcharts@11.4.8/modules/accessibility.min.js"></script>
     <style>
-        :root { --bg: #0d1117; --card: #1c2128; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; }
+        :root { --bg: #0d1117; --card: #1c2128; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #bc8cff; --gold: #f5c342; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; overflow-x: hidden; }
-        html { overflow-x: hidden; }
-        .page { max-width: 1000px; margin: 0 auto; padding: 16px; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.5; overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: -1;
+            background:
+                radial-gradient(ellipse 600px 400px at 15% 20%, rgba(248,81,73,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 500px at 75% 30%, rgba(210,153,34,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 550px 450px at 50% 70%, rgba(63,185,80,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 400px at 85% 80%, rgba(188,140,255,0.05) 0%, transparent 70%);
+            animation: breath 8s ease-in-out infinite alternate;
+        }
+        @keyframes breath {
+            0%   { opacity: 0.6; transform: scale(1); }
+            50%  { opacity: 1; transform: scale(1.03); }
+            100% { opacity: 0.7; transform: scale(0.97); }
+        }
+
+        /* Floating energy orbs */
+        .orb {
+            position: fixed; border-radius: 50%; z-index: -1;
+            pointer-events: none; filter: blur(60px);
+            opacity: 0.15;
+        }
+        .orb-1 {
+            width: 200px; height: 200px;
+            background: var(--red);
+            top: 5%; left: 10%;
+            animation: float1 12s ease-in-out infinite;
+        }
+        .orb-2 {
+            width: 180px; height: 180px;
+            background: var(--orange);
+            top: 25%; right: 8%;
+            animation: float2 15s ease-in-out infinite;
+        }
+        .orb-3 {
+            width: 160px; height: 160px;
+            background: var(--green);
+            bottom: 15%; left: 20%;
+            animation: float3 10s ease-in-out infinite;
+        }
+        .orb-4 {
+            width: 140px; height: 140px;
+            background: var(--purple);
+            bottom: 30%; right: 15%;
+            animation: float4 14s ease-in-out infinite;
+        }
+        @keyframes float1 {
+            0%   { transform: translate(0, 0); }
+            25%  { transform: translate(40px, -30px); }
+            50%  { transform: translate(-20px, 40px); }
+            75%  { transform: translate(30px, 20px); }
+            100% { transform: translate(0, 0); }
+        }
+        @keyframes float2 {
+            0%   { transform: translate(0, 0); }
+            33%  { transform: translate(-30px, 40px); }
+            66%  { transform: translate(20px, -20px); }
+            100% { transform: translate(0, 0); }
+        }
+        @keyframes float3 {
+            0%   { transform: translate(0, 0); }
+            50%  { transform: translate(30px, -40px); }
+            100% { transform: translate(0, 0); }
+        }
+        @keyframes float4 {
+            0%   { transform: translate(0, 0); }
+            50%  { transform: translate(-40px, 30px); }
+            100% { transform: translate(0, 0); }
+        }
+        .page { margin: 0 auto; padding: 16px; }
         h1 { font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
         .nav-back { color: var(--accent); text-decoration: none; font-size: 14px; display: inline-block; margin-bottom: 12px; }
         .nav-back:hover { text-decoration: underline; }
 
         /* Summary cards */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; text-align: center; }
-        .stat-card .num { font-size: 26px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; text-align: center; transition: border-color 0.3s, box-shadow 0.3s; }
+        .stat-card:hover { border-color: rgba(88,166,255,0.4); box-shadow: 0 0 20px rgba(88,166,255,0.08); }
+        .stat-card .num { font-size: 26px; font-weight: 700; color: var(--accent); line-height: 1.2; animation: numPulse 3s ease-in-out infinite; }
+        @keyframes numPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; text-shadow: 0 0 12px rgba(88,166,255,0.3); }
+        }
         .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
         /* Chart wrappers */
-        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; transition: border-color 0.3s, box-shadow 0.3s; }
+        .chart-box:hover { border-color: rgba(88,166,255,0.25); box-shadow: 0 0 15px rgba(88,166,255,0.05); }
         .chart-box h2 { font-size: 14px; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
         .chart-box .hc { width: 100%; height: 280px; }
 
@@ -42,6 +123,13 @@
         .tag-legs { background: rgba(63,185,80,0.2); color: var(--green); }
 
         .no-data { text-align: center; padding: 40px 16px; color: var(--muted); font-size: 14px; }
+        .tab-bar { display: flex; gap: 6px; margin-bottom: 8px; }
+        .tab-btn { flex: 1; padding: 6px 0; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid; background: transparent; transition: all .15s; }
+        .tab-btn.active { color: #fff !important; }
+        .tab-bar-sm { gap: 4px; margin-bottom: 6px; }
+        .tab-btn-sm { flex: none; padding: 3px 12px; font-size: 11px; }
+        .charts-grid { display: grid; grid-template-columns: 1fr; gap: 14px; min-width: 0; }
+        .chart-box { min-width: 0; }
 
         @media (max-width: 600px) {
             .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -59,14 +147,28 @@
             .nav-links { display: flex !important; flex-wrap: wrap !important; gap: 2px 8px !important; font-size: 12px !important; }
             .nav-links a, .nav-links .nav-right { display: inline !important; }
         }
+        @media (min-width: 900px) {
+            .page { max-width: none; }
+            .charts-grid { grid-template-columns: 1fr 1fr; }
+            .chart-box .hc { height: 300px; }
+            .chart-box { padding: 16px; }
+        }
+        @media (min-width: 601px) and (max-width: 899px) {
+            .page { max-width: 1000px; }
+        }
     </style>
 </head>
 <body>
+    <!-- Floating energy orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+
     <nav>
         <div class="nav-container">
-            <a href="/" class="logo">{% trans "MySite" %}</a>
+            <a href="/fitness/" class="logo">🏋️ 训练统计</a>
             <div class="nav-links">
-                <a href="/">{% trans "Home" %}</a>
                 <a href="/fitness/">🏋️ 训练统计</a>
                 <a href="/weight-data/">体重数据</a>
                 {% if user.is_authenticated and user.profile.is_admin %}
@@ -74,6 +176,7 @@
                     <a href="/success/">{% trans "Dashboard" %}</a>
                 {% endif %}
                 {% if user.is_authenticated %}
+                    <a href="/api/fitness/workouts/" target="_blank">📡 API</a>
                     <a href="/logout/">{% trans "Logout" %}</a>
                 {% else %}
                     <a href="/login/">{% trans "Login" %}</a>
@@ -84,7 +187,7 @@
     </nav>
 
     <div class="page">
-        <a href="/" class="nav-back">&larr; {% trans "Back to Home" %}</a>
+        <a href="/fitness/" class="nav-back">&larr; {% trans "Back to Home" %}</a>
         <h1>🏋️ 训练统计</h1>
 
         {% if sessions_count == 0 %}
@@ -97,6 +200,15 @@
             <div class="stat-card"><div class="num">{{ total_volume }}kg</div><div class="label">总训练容量</div></div>
         </div>
 
+        {% if highlights_json and highlights_json != '[]' %}
+        <!-- Highlights -->
+        <div class="chart-box" style="margin-bottom:14px;">
+            <h2>⚡ 最近亮点</h2>
+            <div id="highlightsContainer" style="font-size:12px;line-height:1.6;"></div>
+        </div>
+        {% endif %}
+
+        <div class="charts-grid">
         <!-- Chart 1: Volume trend -->
         <div class="chart-box">
             <h2>📈 训练容量趋势</h2>
@@ -109,16 +221,23 @@
             <div id="categoryChart" class="hc"></div>
         </div>
 
-        <!-- Chart 3: Progressive overload with dropdown -->
+        <!-- Chart 3: Progressive overload tabbed -->
         <div class="chart-box">
-            <h2>🏋️ <select id="exSelect" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;"></select> 渐进负荷</h2>
+            <h2>🏋️ <select id="exSelect" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;"></select> 渐进负荷</h2>
             <div id="progressChart" class="hc"></div>
         </div>
 
-        <!-- Chart 4: Exercise max weight -->
+        <!-- Chart 4: Exercise max weight by category -->
         <div class="chart-box">
-            <h2>💪 各动作最大重量</h2>
+            <h2>💪 最大重量</h2>
             <div id="prChart" class="hc"></div>
+        </div>
+        </div>
+
+        <!-- Chart 5: Efficiency trend -->
+        <div class="chart-box">
+            <h2>⚡ 训练效率趋势</h2>
+            <div id="efficiencyChart" class="hc"></div>
         </div>
 
         <!-- Recent sessions -->
@@ -151,8 +270,132 @@ const categories = {{ categories_json|safe }};
 const exercises = {{ exercises_json|safe }};
 const recentSessions = {{ recent_json|safe }};
 const progressData = {{ progress_json|safe }};
+const efficiencyData = {{ efficiency_json|safe }};
+const extraStats = {{ extra_json|safe }};
 const C = { push: '#f85149', pull: '#d29922', legs: '#3fb950', blue: '#58a6ff', purple: '#bc8cff', cyan: '#39d2c0' };
-const exNames = [...new Set(progressData.map(d => d.name))].sort();
+const cats = ['Push', 'Pull', 'Legs'];
+const catColors = { 'Push': C.push, 'Pull': C.pull, 'Legs': C.legs };
+
+// Shared tab utility
+function createTabs(container, items, active, onClick) {
+    var bar = document.createElement('div');
+    bar.className = 'tab-bar';
+    items.forEach(function(c) {
+        var btn = document.createElement('button');
+        btn.textContent = c + (c === 'All' ? '' : '');
+        btn.className = 'tab-btn';
+        btn.style.borderColor = catColors[c] || 'var(--border)';
+        btn.style.color = catColors[c] || 'var(--text)';
+        if (c === active) { btn.classList.add('active'); btn.style.background = catColors[c] || 'var(--accent)'; }
+        btn.onclick = function() {
+            bar.querySelectorAll('.tab-btn').forEach(function(b) {
+                b.classList.remove('active');
+                b.style.background = 'transparent';
+                b.style.color = catColors[b.textContent.trim()] || 'var(--text)';
+            });
+            btn.classList.add('active');
+            btn.style.background = catColors[c] || 'var(--accent)';
+            btn.style.color = '#fff';
+            onClick(c);
+        };
+        bar.appendChild(btn);
+    });
+    container.parentElement.insertBefore(bar, container);
+    onClick(active);
+}
+
+// Build exercise→category map
+var exByCat = {};
+exercises.forEach(function(e) {
+    if (!exByCat[e.category]) exByCat[e.category] = [];
+    exByCat[e.category].push(e.name);
+});
+Object.keys(exByCat).forEach(function(c) { exByCat[c].sort(); });
+var exNames = [];
+
+// ====== Render highlights ======
+var highlights = {{ highlights_json|safe }};
+if (highlights && highlights.length > 0) {
+    var container = document.getElementById('highlightsContainer');
+    if (container) {
+        var html = '';
+        highlights.forEach(function(h) {
+            if (h.type === 'prs' && h.items.length > 0) {
+                html += '<div style="margin-bottom:6px;"><span style="color:var(--orange);font-weight:600;">🔥 新PR</span>';
+                h.items.forEach(function(pr) {
+                    var c = catColors[pr.category] || 'var(--accent)';
+                    html += '<br/><span style="color:' + c + ';display:inline-block;width:90px;">' + pr.name + '</span> ' +
+                        '<span style="color:var(--muted)">' + pr.from_w + 'kg</span> → <b>' + pr.to_w + 'kg</b>' +
+                        ' <span style="color:var(--green);font-size:11px;">+' + pr.diff + 'kg</span>';
+                });
+                html += '</div>';
+            }
+            if (h.type === 'best_session') {
+                var c = catColors[h.type_name] || 'var(--accent)';
+                html += '<div style="margin-bottom:6px;"><span style="color:var(--purple);font-weight:600;">💪 最大容量</span>' +
+                    '<br/><span style="color:' + c + ';">●</span> ' + h.date + ' ' + h.type_name +
+                    ' — <b>' + h.volume + 'kg</b> (' + h.sets + '组' + (h.duration ? ', ' + h.duration + 'min' : '') + ')</div>';
+            }
+            if (h.type === 'trend') {
+                var arrow = h.pct > 0 ? '📈' : '📉';
+                html += '<div style="margin-bottom:6px;"><span style="color:var(--accent);font-weight:600;">' + arrow + ' 容量趋势</span>' +
+                    '<br/>' + h.cur_date + ' ' + h.cur_type + ' — <b>' + h.cur_vol + 'kg</b>' +
+                    ' <span style="color:' + (h.pct > 0 ? 'var(--green)' : 'var(--red)') + ';">(' + (h.pct > 0 ? '+' : '') + h.pct + '%)</span></div>';
+            }
+            if (h.type === 'last_workout') {
+                var c = catColors[h.type_name] || 'var(--accent)';
+                html += '<div style="margin-bottom:2px;"><span style="color:var(--green);font-weight:600;">🏋️ 最近训练</span>' +
+                    '<br/><span style="color:' + c + ';">●</span> ' + h.date + ' ' + h.type_name +
+                    ' (' + h.ex_count + '个动作' + (h.duration ? ', ' + h.duration + 'min' : '') + ')' +
+                    (h.note ? '<br/><span style="color:var(--muted);font-size:11px;">' + h.note + '</span>' : '') + '</div>';
+            }
+        });
+        container.innerHTML = html;
+    }
+
+    // Extra stats
+    if (extraStats) {
+        var extraHtml = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">';
+
+        // Training intervals
+        if (extraStats.intervals) {
+            extraHtml += '<div style="margin-bottom:4px;"><span style="color:var(--muted);font-size:11px;">📅 训练间隔 (最近)</span><br/>';
+            var typeOrder = ['Push', 'Pull', 'Legs'];
+            typeOrder.forEach(function(t) {
+                if (extraStats.intervals[t] !== undefined) {
+                    var c = catColors[t] || 'var(--text)';
+                    extraHtml += '<span style="color:' + c + ';">' + t + '</span> 隔 <b>' + extraStats.intervals[t] + '</b>天 ';
+                }
+            });
+            extraHtml += '</div>';
+        }
+
+        // Weekly volume
+        if (extraStats.weekly) {
+            var w = extraStats.weekly;
+            var arrow = w.pct > 0 ? '📈' : '📉';
+            extraHtml += '<div style="margin-bottom:4px;"><span style="color:var(--muted);font-size:11px;">📊 周容量</span><br/>' +
+                w.cur_week + ' — <b>' + w.cur_vol + 'kg</b> (' + w.cur_sessions + '次训练)' +
+                ' <span style="color:' + (w.pct > 0 ? 'var(--green)' : 'var(--red)') + ';">' + (w.pct > 0 ? '+' : '') + w.pct + '%</span></div>';
+        }
+
+        // Stability
+        if (extraStats.stability) {
+            var s = extraStats.stability;
+            extraHtml += '<div style="margin-bottom:2px;"><span style="color:var(--muted);font-size:11px;">🎯 动作状态</span><br/>';
+            if (s.progressing && s.progressing.length > 0) {
+                extraHtml += '<span style="color:var(--green);">进步:</span> ' + s.progressing.join(' · ') + '<br/>';
+            }
+            if (s.stable && s.stable.length > 0) {
+                extraHtml += '<span style="color:var(--muted);">稳定:</span> ' + s.stable.join(' · ');
+            }
+            extraHtml += '</div>';
+        }
+
+        extraHtml += '</div>';
+        container.innerHTML += extraHtml;
+    }
+}
 
 if (typeof Highcharts === 'undefined') {
     document.querySelectorAll('.hc').forEach(function(el) {
@@ -160,67 +403,65 @@ if (typeof Highcharts === 'undefined') {
     });
 } else {
 
-// ====== Chart 1: Volume trend ======
-Highcharts.chart('volumeChart', {
-    chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
-    title: { text: null },
-    credits: { enabled: false },
-    legend: { enabled: false },
-    xAxis: {
-        categories: sessions.map(s => s.date),
-        labels: { style: { color: '#8b949e', fontSize: '11px' } },
-        lineColor: '#30363d',
-        tickColor: '#30363d',
-    },
-    yAxis: {
-        title: { text: '容量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
-        labels: { style: { color: '#8b949e', fontSize: '10px' }, format: '{value}' },
-        gridLineColor: '#21262d',
-    },
-    tooltip: {
-        shared: true,
-        useHTML: true,
-        formatter: function() {
-            const p = this.points[0];
-            const s = sessions[p.index];
-            return `<b>${s.date}</b><br/>
-                <span style="color:${C[s.type.toLowerCase()] || C.blue}">●</span> ${s.type}: <b>${s.total_volume}kg</b><br/>
-                组数: ${s.sets} 组${s.duration_min ? ` · ${s.duration_min}min` : ''}`;
-        },
-    },
-    plotOptions: {
-        column: {
-            borderRadius: 4,
-            groupPadding: 0.1,
-            pointPadding: 0.05,
-        },
-    },
-    series: [{
-        name: '训练容量',
-        data: sessions.map(s => ({
-            y: s.total_volume,
-            color: C[s.type.toLowerCase()] || C.blue,
-        })),
-        dataLabels: {
-            enabled: true,
-            format: '{y}kg',
-            style: { color: '#8b949e', fontSize: '10px', textOutline: 'none' },
-            inside: false,
-        },
-    }],
-    responsive: {
-        rules: [{
-            condition: { maxWidth: 600 },
-            chartOptions: {
-                yAxis: { title: { text: null } },
-                dataLabels: { enabled: false },
+// ====== Chart 1: Volume trend (tabbed by Push/Pull/Legs) ======
+var volumeChart = null;
+var allSessions = sessions;
+
+function drawVolume(cat) {
+    if (volumeChart) { volumeChart.destroy(); volumeChart = null; }
+    var data = allSessions.filter(function(s) { return s.type === cat; });
+    if (data.length === 0) {
+        document.getElementById('volumeChart').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">暂无数据</p>';
+        return;
+    }
+    volumeChart = Highcharts.chart('volumeChart', {
+        chart: { type: 'areaspline', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+        title: { text: null },
+        credits: { enabled: false },
+        legend: { enabled: false },
+        xAxis: {
+            categories: data.map(function(s) { return s.date; }),
+            labels: {
+                style: { color: '#8b949e', fontSize: '11px' },
+                step: Math.max(1, Math.floor(data.length / 7)),
+                formatter: function() { return this.value.slice(5); },
+                rotation: -40,
             },
+            lineColor: '#30363d',
+        },
+        yAxis: {
+            title: { text: '容量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
+            labels: { style: { color: '#8b949e', fontSize: '10px' }, format: '{value}' },
+            gridLineColor: '#21262d',
+        },
+        tooltip: {
+            useHTML: true,
+            formatter: function() {
+                var s = data[this.point.index];
+                return '<b>' + s.date + '</b><br/>' +
+                    '<span style="color:' + catColors[cat] + '">●</span> ' + cat + ': <b>' + s.total_volume + 'kg</b><br/>' +
+                    '组数: ' + s.sets + ' 组' + (s.duration_min ? ' · ' + s.duration_min + 'min' : '');
+            },
+        },
+        plotOptions: {
+            areaspline: { fillOpacity: 0.3, marker: { enabled: false, states: { hover: { enabled: true } } } },
+        },
+        series: [{
+            name: cat + ' 容量',
+            data: data.map(function(s) { return s.total_volume; }),
+            color: catColors[cat],
         }],
-    },
-});
+        responsive: {
+            rules: [{
+                condition: { maxWidth: 600 },
+                chartOptions: { yAxis: { title: { text: null } } },
+            }],
+        },
+    });
+}
+createTabs(document.getElementById('volumeChart'), cats, 'Push', drawVolume);
 
 // ====== Chart 2: Category breakdown (donut) ======
-const catColors = { 'Push': C.push, 'Pull': C.pull, 'Legs': C.legs };
 Highcharts.chart('categoryChart', {
     chart: { type: 'pie', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
     title: { text: null },
@@ -266,12 +507,13 @@ Highcharts.chart('categoryChart', {
     },
 });
 
-// ====== Chart 3: Dynamic progressive overload ======
+// ====== Chart 3: Progressive overload (tabbed by Push/Pull/Legs) ======
 var progressChart = null;
+var progActiveCat = 'Push';
+var progActiveEx = '';
 
 function drawProgress(exName) {
     var data = progressData.filter(function(d) { return d.name === exName; });
-    // Remove any existing message
     var oldMsg = document.getElementById('progMsg');
     if (oldMsg) oldMsg.remove();
     if (progressChart) { progressChart.destroy(); progressChart = null; }
@@ -288,168 +530,362 @@ function drawProgress(exName) {
         credits: { enabled: false },
         xAxis: {
             categories: data.map(function(s) { return s.date; }),
-            labels: { style: { color: '#8b949e', fontSize: '11px' } },
+            labels: {
+                style: { color: '#8b949e', fontSize: '11px' },
+                step: Math.max(1, Math.floor(data.length / 7)),
+                formatter: function() { return this.value.slice(5); },
+                rotation: -40,
+            },
             lineColor: '#30363d',
         },
-        yAxis: [{
+        yAxis: {
             title: { text: '重量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
             labels: { style: { color: '#8b949e', fontSize: '10px' } },
             gridLineColor: '#21262d',
-        }, {
-            title: { text: '容量 (kg)', style: { color: '#39d2c0', fontSize: '11px' } },
-            labels: { style: { color: '#39d2c0', fontSize: '10px' } },
-            opposite: true,
-            gridLineWidth: 0,
-        }],
+        },
         tooltip: {
-            shared: true,
             useHTML: true,
             formatter: function() {
-                var pts = this.points || [];
-                var html = '<b>' + this.x + '</b><br/>';
-                pts.forEach(function(p) {
-                    html += '<span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + p.y + '</b><br/>';
-                });
-                return html;
+                return '<b>' + this.x + '</b><br/>' +
+                    '<span style="color:' + this.series.color + '">●</span> ' + this.series.name + ': <b>' + this.y + ' kg</b>';
             },
         },
         plotOptions: {
-            column: { borderRadius: 3, groupPadding: 0.05, pointPadding: 0.02 },
-            line: { marker: { enabled: true, radius: 4, symbol: 'diamond' }, lineWidth: 2 },
+            areaspline: { fillOpacity: 0.3, marker: { enabled: false, states: { hover: { enabled: true } } } },
         },
         series: [{
             name: '最大重量',
-            type: 'column',
-            yAxis: 0,
-            color: 'rgba(88,166,255,0.6)',
-            borderColor: C.blue,
-            borderWidth: 1,
+            type: 'areaspline',
+            color: C.blue,
             data: data.map(function(s) { return s.max_weight; }),
             tooltip: { valueSuffix: ' kg' },
         }, {
-            name: '总容量',
-            type: 'line',
-            yAxis: 1,
-            color: C.cyan,
-            data: data.map(function(s) { return s.total_volume; }),
+            name: '估1RM',
+            type: 'spline',
+            color: C.purple,
+            dashStyle: 'Dash',
+            marker: { symbol: 'diamond', radius: 2 },
+            data: data.map(function(s) { return s.estimated_1rm; }),
             tooltip: { valueSuffix: ' kg' },
         }],
         responsive: {
             rules: [{
                 condition: { maxWidth: 600 },
-                chartOptions: { yAxis: [{ title: { text: null } }, { title: { text: null } }] },
+                chartOptions: { yAxis: { title: { text: null } } },
             }],
         },
     });
 }
 
-// Populate dropdown and init
-var sel = document.getElementById('exSelect');
-exNames.forEach(function(n) {
-    var opt = document.createElement('option');
-    opt.value = n;
-    opt.textContent = n;
-    sel.appendChild(opt);
+function populateExDropdown(cat) {
+    var sel = document.getElementById('exSelect');
+    sel.innerHTML = '';
+    var names = exByCat[cat] || [];
+    names.forEach(function(n) {
+        var opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        sel.appendChild(opt);
+    });
+    if (names.length > 0) {
+        sel.value = names[0];
+        progActiveEx = names[0];
+        drawProgress(names[0]);
+    } else {
+        document.getElementById('progressChart').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">该部位暂无动作数据</p>';
+    }
+}
+
+// Create tabs + dropdown for progressive overload
+var progBox = document.getElementById('progressChart').parentElement;
+var progCtrl = document.createElement('div');
+progCtrl.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:8px;';
+// Tab bar
+var progTabBar = document.createElement('div');
+progTabBar.className = 'tab-bar tab-bar-sm';
+progTabBar.style.cssText = 'display:flex;gap:4px;';
+cats.forEach(function(c) {
+    var btn = document.createElement('button');
+    btn.textContent = c;
+    btn.className = 'tab-btn tab-btn-sm';
+    btn.style.cssText = 'flex:1;padding:4px 0;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ' + catColors[c] + ';background:transparent;color:' + catColors[c] + ';';
+    if (c === 'Push') { btn.classList.add('active'); btn.style.background = catColors[c]; btn.style.color = '#fff'; }
+    btn.onclick = function() {
+        progTabBar.querySelectorAll('.tab-btn').forEach(function(b) {
+            b.classList.remove('active');
+            b.style.background = 'transparent';
+            b.style.color = catColors[b.textContent.trim()];
+        });
+        btn.classList.add('active');
+        btn.style.background = catColors[c];
+        btn.style.color = '#fff';
+        populateExDropdown(c);
+    };
+    progTabBar.appendChild(btn);
 });
-if (exNames.length > 0) {
-    sel.value = '杠铃深蹲';
-    drawProgress(sel.value);
-    sel.addEventListener('change', function() {
-        drawProgress(this.value);
+progCtrl.appendChild(progTabBar);
+// Dropdown row (right-aligned)
+var selRow = document.createElement('div');
+selRow.style.cssText = 'display:flex;justify-content:flex-end;';
+var sel = document.getElementById('exSelect');
+selRow.appendChild(sel);
+progCtrl.appendChild(selRow);
+sel.addEventListener('change', function() {
+    drawProgress(this.value);
+});
+progBox.insertBefore(progCtrl, document.getElementById('progressChart'));
+
+// Init
+populateExDropdown('Push');
+
+// ====== Chart 4: Exercise PRs (tabbed by category) ======
+var prChart = null;
+var prCats = ['Legs', 'Pull', 'Push'];
+var tabColors = { 'Push': '#f85149', 'Pull': '#d29922', 'Legs': '#3fb950' };
+
+function drawPR(cat) {
+    if (prChart) { prChart.destroy(); prChart = null; }
+    var exs = exercises.filter(function(e) { return e.category === cat; }).sort(function(a, b) { return (b.max_weight || 0) - (a.max_weight || 0); });
+    if (exs.length === 0) {
+        document.getElementById('prChart').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">暂无' + cat + '动作数据</p>';
+        return;
+    }
+    prChart = Highcharts.chart('prChart', {
+        chart: { type: 'bar', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+        title: { text: null },
+        credits: { enabled: false },
+        legend: { enabled: false },
+        xAxis: {
+            categories: exs.map(function(e) { return e.name; }),
+            labels: { style: { color: '#8b949e', fontSize: '10px' } },
+            lineColor: '#30363d',
+        },
+        yAxis: {
+            title: { text: '最大重量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
+            labels: { style: { color: '#8b949e', fontSize: '10px' } },
+            gridLineColor: '#21262d',
+        },
+        tooltip: {
+            useHTML: true,
+            formatter: function() {
+                var e = exs[this.point.index];
+                return '<b>' + e.name + '</b><br/>'
+                    + '<span style="color:' + tabColors[cat] + '">●</span> 最大重量: <b>' + e.max_weight + 'kg</b><br/>'
+                    + '平均重量: ' + e.avg_weight + 'kg<br/>'
+                    + '总组数: ' + e.total_sets + ' · 训练次数: ' + e.sessions + '<br/>'
+                    + '总容量: ' + e.total_volume + 'kg';
+            },
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 3,
+                color: tabColors[cat],
+                dataLabels: {
+                    enabled: true,
+                    format: '{y}kg',
+                    style: { color: '#8b949e', fontSize: '10px', textOutline: '1px #0d1117' },
+                    inside: false,
+                    align: 'left',
+                    crop: false,
+                    overflow: 'allow',
+                    x: 8,
+                },
+            },
+        },
+        series: [{ data: exs.map(function(e) { return e.max_weight; }) }],
+        responsive: {
+            rules: [{ condition: { maxWidth: 600 }, chartOptions: { dataLabels: { enabled: false } } }],
+        },
     });
 }
 
-// ====== Chart 4: Exercise PRs ======
-const sortedEx = [...exercises].sort((a, b) => (b.max_weight || 0) - (a.max_weight || 0));
-const exColors = sortedEx.map(e => C[e.category?.toLowerCase()] || C.blue);
-Highcharts.chart('prChart', {
-    chart: { type: 'bar', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
-    title: { text: null },
-    credits: { enabled: false },
-    legend: { enabled: false },
-    xAxis: {
-        categories: sortedEx.map(e => e.name),
-        labels: { style: { color: '#8b949e', fontSize: '10px' } },
-        lineColor: '#30363d',
-    },
-    yAxis: {
-        title: { text: '最大重量 (kg)', style: { color: '#8b949e', fontSize: '11px' } },
-        labels: { style: { color: '#8b949e', fontSize: '10px' } },
-        gridLineColor: '#21262d',
-    },
-    tooltip: {
-        useHTML: true,
-        formatter: function() {
-            const e = sortedEx[this.point.index];
-            return `<b>${e.name}</b><br/>
-                <span style="color:${exColors[this.point.index]}">●</span> 最大重量: <b>${e.max_weight}kg</b><br/>
-                平均重量: ${e.avg_weight}kg<br/>
-                总组数: ${e.total_sets} · 训练次数: ${e.sessions}<br/>
-                总容量: ${e.total_volume}kg`;
-        },
-    },
-    plotOptions: {
-        bar: {
-            borderRadius: 3,
-            dataLabels: {
-                enabled: true,
-                format: '{y}kg',
-                style: { color: '#8b949e', fontSize: '10px', textOutline: 'none' },
-                inside: false,
-            },
-        },
-    },
-    series: [{
-        data: sortedEx.map((e, i) => ({
-            y: e.max_weight,
-            color: exColors[i],
-        })),
-    }],
-    responsive: {
-        rules: [{
-            condition: { maxWidth: 600 },
-            chartOptions: {
-                dataLabels: { enabled: false },
-                xAxis: { labels: { fontSize: '9px' } },
-            },
-        }],
-    },
+// Tab UI
+var tabBar = document.createElement('div');
+tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:10px;';
+prCats.forEach(function(c) {
+    var btn = document.createElement('button');
+    btn.textContent = c;
+    btn.style.cssText = 'flex:1;padding:6px 0;border:1px solid ' + tabColors[c] + ';border-radius:6px;background:transparent;color:' + tabColors[c] + ';font-size:12px;font-weight:600;cursor:pointer;';
+    btn.dataset.cat = c;
+    btn.onclick = function() {
+        document.querySelectorAll('#prTabBar button').forEach(function(b) { b.style.background = 'transparent'; b.style.color = tabColors[b.dataset.cat]; });
+        btn.style.background = tabColors[c];
+        btn.style.color = '#fff';
+        drawPR(c);
+    };
+    tabBar.appendChild(btn);
 });
+tabBar.id = 'prTabBar';
+document.getElementById('prChart').parentElement.insertBefore(tabBar, document.getElementById('prChart'));
+// Default: show Push
+tabBar.querySelector('button').click();
 
-// ====== Recent sessions table ======
-function renderTable() {
-    const tbody = document.querySelector('#recentTable tbody');
+// ====== Chart 5: Efficiency trend (tabbed by Push/Pull/Legs) ======
+var efficiencyChart = null;
+
+function drawEfficiency(cat) {
+    if (efficiencyChart) { efficiencyChart.destroy(); efficiencyChart = null; }
+    var data = efficiencyData.filter(function(e) { return e.type === cat; });
+    if (data.length === 0) {
+        document.getElementById('efficiencyChart').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">暂无数据</p>';
+        return;
+    }
+    efficiencyChart = Highcharts.chart('efficiencyChart', {
+        chart: { type: 'areaspline', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+        title: { text: null },
+        credits: { enabled: false },
+        legend: { enabled: false },
+        xAxis: {
+            categories: data.map(function(e) { return e.date; }),
+            labels: {
+                style: { color: '#8b949e', fontSize: '11px' },
+                step: Math.max(1, Math.floor(data.length / 7)),
+                formatter: function() { return this.value.slice(5); },
+                rotation: -40,
+            },
+            lineColor: '#30363d',
+        },
+        yAxis: {
+            title: { text: 'kg/min', style: { color: '#8b949e', fontSize: '11px' } },
+            labels: { style: { color: '#8b949e', fontSize: '10px' } },
+            gridLineColor: '#21262d',
+        },
+        tooltip: {
+            useHTML: true,
+            formatter: function() {
+                var e = data[this.point.index];
+                return '<b>' + e.date + '</b><br/>' +
+                    '效率: <b>' + e.efficiency + ' kg/min</b><br/>' +
+                    '容量: ' + e.total_volume + 'kg · ' + e.duration_min + 'min';
+            },
+        },
+        plotOptions: {
+            areaspline: { fillOpacity: 0.25, marker: { enabled: false, states: { hover: { enabled: true } } } },
+        },
+        series: [{
+            name: '效率',
+            data: data.map(function(e) { return e.efficiency; }),
+            color: catColors[cat],
+        }],
+        responsive: {
+            rules: [{
+                condition: { maxWidth: 600 },
+                chartOptions: { yAxis: { title: { text: null } } },
+            }],
+        },
+    });
+}
+if (efficiencyData && efficiencyData.length > 0) {
+    createTabs(document.getElementById('efficiencyChart'), cats, 'Push', drawEfficiency);
+}
+
+}
+
+// ====== Recent sessions table (tabbed by Push/Pull/Legs) ======
+var recentFilter = 'All';
+var recentPage = 0;
+var recentPerPage = 10;
+
+function renderTable(cat) {
+    recentFilter = cat || 'All';
+    recentPage = 0;
+    renderRecentPage();
+}
+
+function renderRecentPage() {
+    var tbody = document.querySelector('#recentTable tbody');
     tbody.innerHTML = '';
-    recentSessions.forEach(rs => {
-        // Session header row
-        const tag = rs.type === 'Push' ? 'tag-push' : rs.type === 'Pull' ? 'tag-pull' : 'tag-legs';
-        const emoji = rs.type === 'Push' ? '🔥' : rs.type === 'Pull' ? '💪' : '🦵';
-        const firstEx = rs.exercises[0];
-        let firstRow = true;
-        rs.exercises.forEach((ex, ei) => {
-            const setsStr = ex.sets.map(s => `${s.weight}kg×${s.reps}`).join(' · ');
-            const tr = document.createElement('tr');
+    var all = recentFilter === 'All' ? recentSessions : recentSessions.filter(function(rs) { return rs.type === recentFilter; });
+    var start = recentPage * recentPerPage;
+    var data = all.slice(start, start + recentPerPage);
+    data.forEach(function(rs) {
+        var tag = rs.type === 'Push' ? 'tag-push' : rs.type === 'Pull' ? 'tag-pull' : 'tag-legs';
+        var emoji = rs.type === 'Push' ? '🔥' : rs.type === 'Pull' ? '💪' : '🦵';
+        var firstRow = true;
+        rs.exercises.forEach(function(ex) {
+            var groups = [];
+            ex.sets.forEach(function(s) {
+                var key = s.weight + 'x' + s.reps;
+                if (groups.length > 0 && groups[groups.length-1].key === key) {
+                    groups[groups.length-1].count++;
+                } else {
+                    groups.push({ key: key, weight: s.weight, reps: s.reps, count: 1 });
+                }
+            });
+            var setsStr = groups.map(function(g) {
+                return g.count > 1 ? g.weight + 'kg×' + g.reps + ' ×' + g.count + '组' : g.weight + 'kg×' + g.reps;
+            }).join(' · ');
+            var tr = document.createElement('tr');
             if (firstRow) {
-                tr.innerHTML = `
-                    <td rowspan="${rs.exercises.length}" style="vertical-align:top;padding-top:8px;">${rs.date}</td>
-                    <td rowspan="${rs.exercises.length}" style="vertical-align:top;padding-top:8px;"><span class="tag ${tag}">${emoji} ${rs.type}</span></td>
-                    <td rowspan="${rs.exercises.length}" style="vertical-align:top;padding-top:8px;">${rs.duration_min || '-'}min</td>
-                    <td class="ex-name">${ex.name}</td>
-                    <td style="font-size:11px;color:var(--muted)">${setsStr}</td>
-                `;
+                tr.innerHTML = '\n                    <td rowspan="' + rs.exercises.length + '" style="vertical-align:top;padding-top:8px;">' + rs.date + '</td>\n                    <td rowspan="' + rs.exercises.length + '" style="vertical-align:top;padding-top:8px;"><span class="tag ' + tag + '">' + emoji + ' ' + rs.type + '</span></td>\n                    <td rowspan="' + rs.exercises.length + '" style="vertical-align:top;padding-top:8px;">' + (rs.duration_min || '-') + 'min</td>\n                    <td class="ex-name">' + ex.name + '</td>\n                    <td style="font-size:11px;color:var(--muted)">' + setsStr + '</td>\n                ';
                 firstRow = false;
             } else {
-                tr.innerHTML = `
-                    <td class="ex-name">${ex.name}</td>
-                    <td style="font-size:11px;color:var(--muted)">${setsStr}</td>
-                `;
+                tr.innerHTML = '\n                    <td class="ex-name">' + ex.name + '</td>\n                    <td style="font-size:11px;color:var(--muted)">' + setsStr + '</td>\n                ';
             }
             tbody.appendChild(tr);
         });
     });
 }
+
+function updatePageBtns() {
+    var all = recentFilter === "All" ? recentSessions : recentSessions.filter(function(rs) { return rs.type === recentFilter; });
+    var totalPages = Math.ceil(all.length / recentPerPage);
+    var pb = document.getElementById("pageBtns");
+    if (!pb) return;
+    pb.innerHTML = "";
+    if (totalPages <= 1) return;
+    var prevBtn = document.createElement("button");
+    prevBtn.textContent = "< Prev";
+    prevBtn.style.cssText = "background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;margin-right:4px;";
+    if (recentPage <= 0) { prevBtn.style.opacity = "0.3"; prevBtn.disabled = true; }
+    else { prevBtn.onclick = function() { recentPage--; renderRecentPage(); updatePageBtns(); }; }
+    pb.appendChild(prevBtn);
+    var info = document.createElement("span");
+    info.textContent = (recentPage + 1) + "/" + totalPages;
+    info.style.cssText = "color:var(--muted);font-size:11px;margin:0 6px;";
+    pb.appendChild(info);
+    var nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next >";
+    nextBtn.style.cssText = "background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;";
+    if (recentPage >= totalPages - 1) { nextBtn.style.opacity = "0.3"; nextBtn.disabled = true; }
+    else { nextBtn.onclick = function() { recentPage++; renderRecentPage(); updatePageBtns(); }; }
+    pb.appendChild(nextBtn);
 }
-renderTable();
+
+function renderTable(cat) {
+    recentFilter = cat || "All";
+    recentPage = 0;
+    renderRecentPage();
+    updatePageBtns();
+}
+
+createTabs(document.querySelector("#recentTable").parentElement, ["All"].concat(cats), "All", renderTable);
+
+var pageBar = document.createElement("div");
+pageBar.id = "pageBtns";
+pageBar.style.cssText = "text-align:center;margin-top:8px;";
+var tableWrap = document.querySelector("#recentTable").parentElement;
+tableWrap.appendChild(pageBar);
+
+// Mobile swipe for pagination
+var touchStartX = 0;
+tableWrap.addEventListener("touchstart", function(e) {
+    touchStartX = e.touches[0].clientX;
+});
+tableWrap.addEventListener("touchend", function(e) {
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 60) {
+        if (dx < 0) { // swipe left -> next page
+            var nextBtn = document.querySelector("#pageBtns button:last-child");
+            if (nextBtn && !nextBtn.disabled) nextBtn.click();
+        } else { // swipe right -> prev page
+            var prevBtn = document.querySelector("#pageBtns button:first-child");
+            if (prevBtn && !prevBtn.disabled) prevBtn.click();
+        }
+    }
+});
+
+setTimeout(function() { updatePageBtns(); }, 100);
 {% endif %}
 </script>
 </body>

@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/fitness/stats/', api.stats_overview, name='api_stats'),
     path('api/fitness/cycle/', api.cycle_detail, name='api_cycle_detail'),
     path('api/fitness/cycle/<int:pk>/', api.cycle_update, name='api_cycle_update'),
+    path('api/fitness/users/', api.api_users, name='api_users'),
 ]
 
 if settings.DEBUG:

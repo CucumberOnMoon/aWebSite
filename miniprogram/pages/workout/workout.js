@@ -27,9 +27,7 @@ Page({
   startTimer() {
     this.timerRef = setInterval(() => {
       const sec = Math.floor((Date.now() - this.data.startTime) / 1000)
-      const m = String(Math.floor(sec / 60)).padStart(2, '0')
-      const s = String(sec % 60).padStart(2, '0')
-      this.setData({ timer: m + ':' + s })
+      this.setData({ timer: String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0') })
     }, 1000)
   },
 
@@ -39,23 +37,13 @@ Page({
       const dow = new Date().getDay()
       const idx = dow === 0 ? 6 : dow - 1
       const todayType = WEEK_CYCLE[idx] || 'rest'
-
-      const dayExs = (allExs || [])
-        .filter(e => (e.category || '').toLowerCase() === todayType)
+      const dayExs = (allExs || []).filter(e => (e.category || '').toLowerCase() === todayType)
 
       const exList = dayExs.map(e => ({
-        id: e.id,
-        name: e.name,
-        sets: [],
-        open: false,
-        inWeight: '',
-        inReps: '',
-        inRir: '0',
-        done: false
+        id: e.id, name: e.name, sets: [], open: false,
+        inWeight: '', inReps: '', inRir: '0', done: false
       }))
-
       if (exList.length) exList[0].open = true
-
       this.setData({ exList, loading: false })
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'error' })
@@ -65,8 +53,7 @@ Page({
 
   onToggle(e) {
     const idx = e.currentTarget.dataset.idx
-    const key = 'exList[' + idx + '].open'
-    this.setData({ [key]: !this.data.exList[idx].open })
+    this.setData({ ['exList[' + idx + '].open']: !this.data.exList[idx].open })
   },
 
   onIn(e) {
@@ -82,25 +69,19 @@ Page({
     const reps = parseInt(ex.inReps)
     const rir = parseInt(ex.inRir) || 0
 
-    if (!weight || !reps) {
-      wx.showToast({ title: '请输入重量和次数', icon: 'none' })
-      return
-    }
+    if (!weight || !reps) { wx.showToast({ title: '请输入重量和次数', icon: 'none' }); return }
 
     wx.showLoading({ title: '保存...' })
     try {
       const res = await api.logSet(this.data.workoutId, ex.id, weight, reps, rir)
       const num = ex.sets.length + 1
-      const newSet = { sid: res.id || num, num, weight_kg: weight, reps, rir }
-
       const key = 'exList[' + idx + '].sets'
       this.setData({
-        [key]: [...ex.sets, newSet],
+        [key]: [...ex.sets, { sid: res.id || num, num, weight_kg: weight, reps, rir }],
         ['exList[' + idx + '].inWeight']: '',
         ['exList[' + idx + '].inReps']: '',
         ['exList[' + idx + '].inRir']: '0'
       })
-
       wx.hideLoading()
       wx.showToast({ title: '✓ 第' + num + '组', icon: 'success', duration: 800 })
     } catch (e) {
@@ -117,7 +98,6 @@ Page({
         if (!res.confirm) return
         if (this.timerRef) clearInterval(this.timerRef)
         const min = Math.floor((Date.now() - this.data.startTime) / 60000)
-
         try {
           await api.finishWorkout(this.data.workoutId, min)
           wx.showToast({ title: '训练完成 💪', icon: 'success', duration: 2000 })

@@ -13,7 +13,7 @@ Endpoints:
   PATCH     /api/fitness/cycle/<id>/        — update cycle entry
 """
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -25,10 +25,11 @@ logger = logging.getLogger(__name__)
 # ── helpers ──────────────────────────────────────────────────────────
 
 def _owner(request):
-    """Get owner: from request body if provided, else from logged-in user."""
+    """Get owner: from body for POST/PATCH, else from query param or fallback."""
     if request.method in ('POST', 'PATCH') and request.data.get('owner'):
         return request.data['owner']
-    return request.user.username
+    # GET: accept ?owner=xxx param, fallback to 'howard'
+    return request.query_params.get('owner') or 'howard'
 
 BODY_WEIGHT = 75
 ASSISTED = {"助力引体向上", "双杠臂屈伸(助力)"}
@@ -56,7 +57,7 @@ def _run_sql(sql):
 # ── workouts ─────────────────────────────────────────────────────────
 
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def workout_list(request):
     """List all workouts, or create a new one."""
     if request.method == 'GET':
@@ -106,7 +107,7 @@ def workout_list(request):
 
 
 @api_view(['GET', 'PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def workout_detail(request, pk):
     """Single workout with sets (GET), or update duration/note (PATCH)."""
     if request.method == 'GET':
@@ -146,7 +147,7 @@ def workout_detail(request, pk):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def workout_last(request):
     """Most recent workout with full set details."""
     sql = f"SELECT id, date, type, duration_min, note FROM workouts WHERE owner = '{_owner(request)}' ORDER BY date DESC LIMIT 1"
@@ -172,7 +173,7 @@ def workout_last(request):
 # ── exercises ────────────────────────────────────────────────────────
 
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def exercise_list(request):
     """List all exercises, or create a new one."""
     if request.method == 'GET':
@@ -210,7 +211,7 @@ def exercise_list(request):
 # ── sets ─────────────────────────────────────────────────────────────
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def set_create(request):
     """Add one or more sets to a workout.
     Accepts a single set or an array of sets.
@@ -255,7 +256,7 @@ def set_create(request):
 # ── stats ────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def stats_overview(request):
     """Aggregated stats: totals, per-category, per-exercise, progress."""
     # Total stats
@@ -329,7 +330,7 @@ def stats_overview(request):
 # ── cycle info ──────────────────────────────────────────────────────
 
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def cycle_detail(request):
     """Get current cycle info (most recent), or create a new one."""
     if request.method == 'GET':
@@ -365,7 +366,7 @@ def cycle_detail(request):
 
 
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def cycle_update(request, pk):
     """Update a cycle entry."""
     updates = []
@@ -386,3 +387,16 @@ def cycle_update(request, pk):
     sql = f"UPDATE cycle_info SET {', '.join(updates)} WHERE id = {pk} AND owner = '{_owner(request)}'"
     _run_workout_query(sql)
     return Response({'status': 'updated', 'id': pk})
+
+
+# ── users ───────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_users(request):
+    """List all users who have workout data."""
+    sql = "SELECT DISTINCT owner FROM workouts ORDER BY owner"
+    data = _run_sql(sql)
+    if data is None:
+        return Response({'error': '查询失败'}, status=500)
+    return Response([row['owner'] for row in data])

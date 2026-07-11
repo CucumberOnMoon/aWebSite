@@ -1,7 +1,22 @@
 .page { height: 100vh; background: #0d1117; padding-bottom: 20px; }
 .hero { text-align: center; padding: 24px 16px 8px; }
 .hero-title { font-size: 24px; font-weight: 700; color: #e6edf3; }
-.empty-state { text-align: center; padding: 80px 16px; font-size: 14px; }
+
+/* 用户选择器 */
+.user-picker {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: #161b22; border-bottom: 1px solid #30363d;
+}
+.user-label { font-size: 13px; color: #8b949e; }
+.picker-box {
+  display: flex; align-items: center; gap: 6px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+  padding: 6px 12px;
+}
+.picker-text { font-size: 14px; color: #58a6ff; font-weight: 500; }
+.picker-arrow { font-size: 10px; color: #8b949e; }
+
+.empty-state { text-align: center; padding: 80px 16px; font-size: 14px; color: #8b949e; }
 
 /* 统计卡片 */
 .stat-row { display: flex; gap: 8px; padding: 0 16px; margin-bottom: 8px; }

@@ -27,29 +27,23 @@ Page({
   },
 
   async onShow() {
-    // 1) 先看缓存直接加载数据，不等微信登录
-    const cached = api.getCurrentUser()
-    if (cached) {
-      this.setData({ selectedUser: cached })
-      this.loadAll(cached)
-    }
-    // 2) 后台微信登录
     if (!this.data.wxDone) {
+      // 首次：等微信登录完成
       await this.tryWechatLogin()
-      // 登录后刷新用户列表
-      this.loadUsers()
       const wxUser = api.getCurrentUser()
-      // 如果微信登录拿到了不同用户，重新加载
-      if (wxUser && wxUser !== cached) {
+      if (wxUser) {
         this.setData({ selectedUser: wxUser })
         this.loadAll(wxUser)
       }
-      // 如果没任何用户，弹创建框
-      if (!wxUser && !cached) {
-        this.setData({ showCreate: true, newUserName: '' })
-      }
-    } else {
       this.loadUsers()
+    } else {
+      // 后续：直接读缓存
+      this.loadUsers()
+      const saved = api.getCurrentUser()
+      if (saved) {
+        this.setData({ selectedUser: saved })
+        this.loadAll(saved)
+      }
     }
   },
 
@@ -61,11 +55,11 @@ Page({
       if (res && res.bound && res.username) {
         api.setCurrentUser(res.username)
       } else if (res && res.openid) {
-        // 未绑定，记下 openid 弹创建框
         this.setData({ wechatOpenid: res.openid, showCreate: true, newUserName: '' })
       }
     } catch (_) {
-      // 微信登录失败，啥也不做（缓存数据已在 onShow 加载）
+      // 微信登录失败，弹创建框
+      this.setData({ showCreate: true, newUserName: '' })
     }
   },
 

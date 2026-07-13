@@ -74,12 +74,14 @@ Page({
         this.setData({ showCreate: true, newUserName: '' })
       }
     } catch (_) {
-      // wechatLogin 失败，从缓存加载
+      // wechatLogin 失败（网络/API），有缓存走缓存，没缓存弹创建
       this.loadUsers()
       const saved = api.getCurrentUser()
       if (saved) {
         this.setData({ selectedUser: saved })
         this.loadAll(saved)
+      } else {
+        this.setData({ showCreate: true, newUserName: '' })
       }
     }
   },

@@ -28,20 +28,30 @@ Page({
   },
 
   async onShow() {
-    // 先加载用户列表（不依赖微信登录）
+    if (this.data.wxDone) {
+      // 已登录过，直接读缓存
+      this.loadUsers()
+      const saved = api.getCurrentUser()
+      if (saved) {
+        this.setData({ selectedUser: saved, boundUser: saved })
+        this.loadAll(saved)
+      }
+      return
+    }
+
+    // 首次：微信登录
     this.loadUsers()
     this.setData({ loading: true })
     try {
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)
+      this.setData({ wxDone: true })
       if (res && res.bound && res.username) {
         api.setCurrentUser(res.username)
         this.setData({ selectedUser: res.username, boundUser: res.username, loading: false })
         this.loadAll(res.username)
       } else if (res && res.openid) {
         this.setData({ wechatOpenid: res.openid, loading: false })
-        this.loadUsers()
-        // 查有无未绑定用户，有则让用户选，无则弹创建
         try {
           const unbound = await api.getUnbound()
           if (unbound && unbound.length > 0) {
@@ -56,7 +66,7 @@ Page({
         this.setData({ showCreate: true, loading: false, newUserName: '' })
       }
     } catch (_) {
-      this.setData({ showCreate: true, loading: false, newUserName: '' })
+      this.setData({ wxDone: true, showCreate: true, loading: false, newUserName: '' })
     }
   },
 
@@ -292,7 +302,7 @@ Page({
       await api.wechatBind(this.data.wechatOpenid, username)
       wx.hideLoading()
       api.setCurrentUser(username)
-      this.setData({ selectedUser: username, boundUser: username, showBindPicker: false, showBind: false })
+      this.setData({ selectedUser: username, boundUser: username, showBindPicker: false, showBind: false, wxDone: false })
       this.loadAll(username)
       wx.showToast({ title: '绑定成功', icon: 'success' })
     } catch (e) {

@@ -5,44 +5,53 @@
     <text class="text-muted">训练时长</text>
   </view>
 
-  <!-- 动作列表 -->
-  <view class="card" wx:for="{{exList}}" wx:key="id">
-    <view class="ex-header" bindtap="onToggle" data-idx="{{index}}">
-      <text class="card-title">{{ex.name}}</text>
-      <text class="toggle">{{ex.open ? '▾' : '▸'}}</text>
+  <!-- 三个下拉框 -->
+  <view class="card">
+    <text class="card-title">添加一组</text>
+
+    <view class="picker-row">
+      <text class="picker-label">动作</text>
+      <picker mode="selector" range="{{exLabels}}" bindchange="onExChange">
+        <view class="picker-box">
+          <text class="picker-text">{{exLabels[exIdx] || '选择动作'}}</text>
+          <text class="picker-arrow">▾</text>
+        </view>
+      </picker>
     </view>
 
-    <view wx:if="{{ex.open}}">
-      <!-- 已记录组 -->
-      <view class="set-row" wx:for="{{ex.sets}}" wx:key="sid" wx:for-item="s">
-        <text class="set-num">第{{s.num}}组</text>
-        <text class="text-success">{{s.weight_kg}}kg × {{s.reps}}</text>
-        <text class="text-muted" wx:if="{{s.rir > 0}}">RIR {{s.rir}}</text>
-      </view>
-
-      <!-- 输入新组 -->
-      <view class="add-set" wx:if="{{!ex.done}}">
-        <view class="input-row">
-          <view class="input-group">
-            <text class="input-label">重量 kg</text>
-            <input class="num-input" type="digit" 
-                   value="{{ex.inWeight}}" 
-                   bindinput="onIn" data-idx="{{index}}" data-field="inWeight" />
-          </view>
-          <view class="input-group">
-            <text class="input-label">次数</text>
-            <input class="num-input" type="number" 
-                   value="{{ex.inReps}}" 
-                   bindinput="onIn" data-idx="{{index}}" data-field="inReps" />
-          </view>
-          <view class="input-group">
-            <text class="input-label">RIR</text>
-            <input class="num-input" type="number" 
-                   value="{{ex.inRir}}" 
-                   bindinput="onIn" data-idx="{{index}}" data-field="inRir" />
-          </view>
+    <view class="picker-row">
+      <text class="picker-label">重量</text>
+      <picker mode="selector" range="{{weightLabels}}" bindchange="onWeightChange">
+        <view class="picker-box">
+          <text class="picker-text">{{weightLabels[weightIdx] || '选择重量'}}</text>
+          <text class="picker-arrow">▾</text>
         </view>
-        <button class="btn-add" bindtap="onAddSet" data-idx="{{index}}">+ 记录一组</button>
+      </picker>
+    </view>
+
+    <view class="picker-row">
+      <text class="picker-label">次数</text>
+      <picker mode="selector" range="{{repsLabels}}" bindchange="onRepsChange">
+        <view class="picker-box">
+          <text class="picker-text">{{repsLabels[repsIdx] || '选择次数'}}</text>
+          <text class="picker-arrow">▾</text>
+        </view>
+      </picker>
+    </view>
+
+    <button class="btn-add" bindtap="onAddSet">+ 添加一组</button>
+  </view>
+
+  <!-- 已记录组 -->
+  <view class="card" wx:if="{{loggedGroups.length > 0}}">
+    <text class="card-title">已记录</text>
+    <view class="log-group" wx:for="{{loggedGroups}}" wx:key="name">
+      <text class="log-ex-name">{{item.name}}</text>
+      <view class="log-sets">
+        <view class="log-set" wx:for="{{item.sets}}" wx:key="num">
+          <text class="log-set-num">第{{item.num}}组</text>
+          <text class="log-set-val">{{item.weight_kg}}kg × {{item.reps}}次</text>
+        </view>
       </view>
     </view>
   </view>

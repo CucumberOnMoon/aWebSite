@@ -1,106 +1,50 @@
-.page {
-  height: 100vh;
+.page { height: 100vh; background: #0d1117; padding-bottom: 40px; }
+
+/* 计时器 */
+.timer-bar { text-align: center; padding: 24px 0 8px; }
+.timer { font-size: 48px; font-weight: 700; color: #58a6ff; display: block; letter-spacing: 2px; }
+
+/* 卡片 */
+.card { margin: 8px 16px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 16px; }
+.card-title { font-size: 15px; font-weight: 600; color: #e6edf3; display: block; margin-bottom: 12px; }
+
+/* 下拉框行 */
+.picker-row { display: flex; align-items: center; margin-bottom: 10px; }
+.picker-label { width: 56px; font-size: 13px; color: #8b949e; flex-shrink: 0; }
+.picker-box {
+  flex: 1; display: flex; align-items: center; justify-content: space-between;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+  padding: 10px 14px; min-height: 22px;
 }
+.picker-text { font-size: 14px; color: #c9d1d9; }
+.picker-arrow { font-size: 10px; color: #8b949e; }
 
-.timer-bar {
-  text-align: center;
-  padding: 20px;
-  background: #161b22;
-  border-bottom: 1px solid #30363d;
-}
-
-.timer {
-  font-size: 36px;
-  font-weight: 700;
-  color: #58a6ff;
-  display: block;
-  font-variant-numeric: tabular-nums;
-}
-
-.ex-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.toggle { color: #8b949e; font-size: 16px; }
-
-.set-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid #21262d;
-  font-size: 13px;
-}
-
-.set-num {
-  color: #8b949e;
-  font-size: 12px;
-  min-width: 44px;
-}
-
-.add-set {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #21262d;
-}
-
-.input-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.input-group { flex: 1; }
-
-.input-label {
-  font-size: 11px;
-  color: #8b949e;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.num-input {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  height: 36px;
-  padding: 0 8px;
-  color: #c9d1d9;
-  font-size: 14px;
-  text-align: center;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.num-input:focus { border-color: #1f6feb; }
-
+/* 添加按钮 */
 .btn-add {
-  background: #21262d;
-  color: #58a6ff;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  height: 38px;
-  line-height: 38px;
-  font-size: 14px;
-  text-align: center;
-  width: 100%;
+  width: 100%; background: #238636; color: white; border: none; border-radius: 8px;
+  padding: 10px; font-size: 14px; font-weight: 600; text-align: center; margin-top: 6px;
 }
+.btn-add:active { opacity: 0.8; }
 
-.btn-add:active { background: #30363d; }
+/* 已记录组 */
+.log-group { margin-bottom: 10px; }
+.log-group:last-child { margin-bottom: 0; }
+.log-ex-name { font-size: 14px; font-weight: 600; color: #e6edf3; display: block; margin-bottom: 6px; }
+.log-sets { display: flex; flex-wrap: wrap; gap: 6px; }
+.log-set {
+  display: flex; align-items: center; gap: 4px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 5px 10px;
+}
+.log-set-num { font-size: 11px; color: #8b949e; }
+.log-set-val { font-size: 12px; color: #3fb950; font-weight: 500; }
 
+/* 完成按钮 */
+.btn-area { padding: 16px; }
 .btn-finish {
-  background: linear-gradient(135deg, #1f6feb, #238636);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 16px;
-  font-size: 18px;
-  font-weight: 600;
-  width: 100%;
-  text-align: center;
-  margin-top: 16px;
+  width: 100%; background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  color: white; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600; text-align: center;
 }
+.btn-finish:active { opacity: 0.8; }
 
-.btn-finish:active { opacity: 0.85; }
+.loading { text-align: center; padding: 20px; color: #8b949e; font-size: 13px; }
+.text-muted { font-size: 12px; color: #8b949e; text-align: center; display: block; }

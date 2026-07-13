@@ -63,11 +63,14 @@ function getLastWorkout() { return request('GET', '/api/fitness/workouts/last/')
 function getSetHistory(exerciseId) {
   return request('GET', '/api/fitness/sets/history/', { exercise_id: exerciseId })
 }
+function getWorkoutSets(workoutId) {
+  return request('GET', '/api/fitness/workouts/' + workoutId + '/')
+}
 
 module.exports = {
   setCurrentUser, getCurrentUser,
   getUsers, getUnbound, wechatLogin, wechatBind, wechatCreate,
   getStats, getExercises, getCycle,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
-  getSetHistory
+  getSetHistory, getWorkoutSets
 }

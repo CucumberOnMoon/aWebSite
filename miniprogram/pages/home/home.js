@@ -27,39 +27,35 @@ Page({
   },
 
   async onShow() {
-    if (!this.data.wxDone) {
-      // 首次：等微信登录完成
-      await this.tryWechatLogin()
-      const wxUser = api.getCurrentUser()
-      if (wxUser) {
-        this.setData({ selectedUser: wxUser })
-        this.loadAll(wxUser)
-      }
-      this.loadUsers()
-    } else {
-      // 后续：直接读缓存
+    if (this.data.wxDone) {
+      // 后续打开：读缓存
       this.loadUsers()
       const saved = api.getCurrentUser()
       if (saved) {
         this.setData({ selectedUser: saved })
         this.loadAll(saved)
       }
+      return
     }
-  },
 
-  async tryWechatLogin() {
-    this.setData({ wxDone: true })
+    // 首次：微信登录
+    this.setData({ wxDone: true, loading: true })
     try {
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)
       if (res && res.bound && res.username) {
         api.setCurrentUser(res.username)
+        this.setData({ selectedUser: res.username, loading: false })
+        this.loadAll(res.username)
+        this.loadUsers()
       } else if (res && res.openid) {
-        this.setData({ wechatOpenid: res.openid, showCreate: true, newUserName: '' })
+        this.setData({ wechatOpenid: res.openid, showCreate: true, loading: false, newUserName: '' })
+        this.loadUsers()
+      } else {
+        this.setData({ showCreate: true, loading: false, newUserName: '' })
       }
     } catch (_) {
-      // 微信登录失败，弹创建框
-      this.setData({ showCreate: true, newUserName: '' })
+      this.setData({ showCreate: true, loading: false, newUserName: '' })
     }
   },
 

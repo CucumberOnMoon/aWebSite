@@ -19,6 +19,7 @@ function request(method, path, data) {
     if (method === 'GET') {
       const params = []
       params.push('owner=' + encodeURIComponent(getCurrentUser() || 'howard'))
+      params.push('_t=' + Date.now())  // 防缓存
       if (data && typeof data === 'object') {
         for (const [k, v] of Object.entries(data)) {
           if (v !== undefined && v !== null) params.push(k + '=' + encodeURIComponent(v))

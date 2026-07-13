@@ -27,19 +27,7 @@ Page({
   },
 
   async onShow() {
-    if (this.data.wxDone) {
-      // 后续打开：读缓存
-      this.loadUsers()
-      const saved = api.getCurrentUser()
-      if (saved) {
-        this.setData({ selectedUser: saved })
-        this.loadAll(saved)
-      }
-      return
-    }
-
-    // 首次：微信登录
-    this.setData({ wxDone: true, loading: true })
+    this.setData({ loading: true })
     try {
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)

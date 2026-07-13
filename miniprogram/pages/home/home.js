@@ -28,6 +28,8 @@ Page({
   },
 
   async onShow() {
+    // 先加载用户列表（不依赖微信登录）
+    this.loadUsers()
     this.setData({ loading: true })
     try {
       const { code } = await wx.login()
@@ -36,7 +38,6 @@ Page({
         api.setCurrentUser(res.username)
         this.setData({ selectedUser: res.username, boundUser: res.username, loading: false })
         this.loadAll(res.username)
-        await this.loadUsers()
       } else if (res && res.openid) {
         this.setData({ wechatOpenid: res.openid, loading: false })
         this.loadUsers()

@@ -46,10 +46,19 @@ Page({
           if (list && list.length > 0) this.setData({ unboundList: list })
         }).catch(() => {})
       } else {
-        this.setData({ showCreate: true, loading: false, newUserName: '' })
+        this.setData({ loading: false, showBind: true })
+        this.loadUsers()
+        api.getUnbound().then(list => {
+          if (list && list.length > 0) this.setData({ unboundList: list })
+        }).catch(() => {})
       }
     } catch (_) {
-      this.setData({ showCreate: true, loading: false, newUserName: '' })
+      // 微信登录失败，弹绑定框让用户操作
+      this.loadUsers()
+      this.setData({ showBind: true, loading: false })
+      api.getUnbound().then(list => {
+        if (list && list.length > 0) this.setData({ unboundList: list })
+      }).catch(() => {})
     }
   },
 

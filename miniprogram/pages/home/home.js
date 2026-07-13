@@ -39,17 +39,12 @@ Page({
         this.setData({ selectedUser: res.username, boundUser: res.username, loading: false })
         this.loadAll(res.username)
       } else if (res && res.openid) {
-        this.setData({ wechatOpenid: res.openid, loading: false })
-        try {
-          const unbound = await api.getUnbound()
-          if (unbound && unbound.length > 0) {
-            this.setData({ showBind: true, unboundList: unbound })
-          } else {
-            this.setData({ showCreate: true, newUserName: '' })
-          }
-        } catch (_) {
-          this.setData({ showCreate: true, newUserName: '' })
-        }
+        this.setData({ wechatOpenid: res.openid, loading: false, showBind: true })
+        this.loadUsers()
+        // 后台加载未绑定用户列表
+        api.getUnbound().then(list => {
+          if (list && list.length > 0) this.setData({ unboundList: list })
+        }).catch(() => {})
       } else {
         this.setData({ showCreate: true, loading: false, newUserName: '' })
       }

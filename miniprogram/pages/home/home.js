@@ -37,8 +37,19 @@ Page({
         this.loadAll(res.username)
         this.loadUsers()
       } else if (res && res.openid) {
-        this.setData({ wechatOpenid: res.openid, showCreate: true, loading: false, newUserName: '' })
+        this.setData({ wechatOpenid: res.openid, loading: false })
         this.loadUsers()
+        // 查有无未绑定用户，有则让用户选，无则弹创建
+        try {
+          const unbound = await api.getUnbound()
+          if (unbound && unbound.length > 0) {
+            this.setData({ showBind: true, unboundList: unbound })
+          } else {
+            this.setData({ showCreate: true, newUserName: '' })
+          }
+        } catch (_) {
+          this.setData({ showCreate: true, newUserName: '' })
+        }
       } else {
         this.setData({ showCreate: true, loading: false, newUserName: '' })
       }

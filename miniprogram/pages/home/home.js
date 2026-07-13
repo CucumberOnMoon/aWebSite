@@ -118,9 +118,10 @@ Page({
             if (!exMap[en]) exMap[en] = { exName: en, sets: [] }
             exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
           }
-          const dur = lw.duration_min || 0
-          lastWorkout = { date: lw.date, type: lw.type || '', duration: dur, exercises: Object.values(exMap) }
-          lastWorkoutStr = lw.date + ' · ' + (lw.type || '') + ' · ' + dur + '分'
+          const dur = lw.duration_min
+          const durNum = (dur === 'NULL' || dur === null || dur === undefined) ? 0 : dur
+          lastWorkout = { date: lw.date, type: lw.type || '', duration: durNum, exercises: Object.values(exMap) }
+          lastWorkoutStr = lw.date + ' · ' + (lw.type || '') + ' · ' + durNum + '分'
         }
       } catch (_) {}
 
@@ -241,9 +242,11 @@ Page({
   },
 
   buildCalendar(workouts) {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = today.getMonth()
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    // 用本地日期不用UTC
+    const todayLocal = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
     const workoutDates = new Set()
     for (const w of workouts) workoutDates.add(w.date)
     const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -256,7 +259,7 @@ Page({
       grid.push({
         day: d, date: dateStr,
         hasWorkout: workoutDates.has(dateStr),
-        isToday: dateStr === today.toISOString().slice(0, 10)
+        isToday: dateStr === todayLocal
       })
     }
     return { grid, months: [monthLabel] }

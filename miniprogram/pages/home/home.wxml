@@ -65,7 +65,7 @@
       <!-- ② 上次训练 -->
       <view class="card" wx:if="{{lastWorkout}}">
         <text class="card-title">🕐 上次训练</text>
-        <text class="text-muted">{{lastWorkout.date}} · {{lastWorkout.type}} · {{lastWorkout.duration || 0}}分</text>
+        <text class="text-muted">{{lastWorkout.date}} · {{lastWorkout.type}} · <text wx:if="{{lastWorkout.duration != null}}">{{lastWorkout.duration}}分</text><text wx:else>0分</text></text>
         <view class="last-workout">
           <view class="ex-group" wx:for="{{lastWorkout.exercises}}" wx:key="exName">
             <text class="ex-title">{{item.exName}}</text>

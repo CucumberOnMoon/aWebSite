@@ -61,18 +61,7 @@ Page({
         // 只设用户，不调 loadAll — onShow 会统一调
         return
       }
-      this.setData({ wechatOpenid: res.openid })
-      this.loadUsers()
-      try {
-        const unbound = await api.getUnbound()
-        if (!unbound || unbound.length === 0) {
-          this.setData({ showCreate: true, newUserName: '' })
-        } else {
-          this.setData({ showBind: true, unboundList: unbound })
-        }
-      } catch (_) {
-        this.setData({ showCreate: true, newUserName: '' })
-      }
+      this.setData({ wechatOpenid: res.openid, showCreate: true, newUserName: '' })
     } catch (_) {
       // wechatLogin 失败（网络/API），有缓存走缓存，没缓存弹创建
       this.loadUsers()

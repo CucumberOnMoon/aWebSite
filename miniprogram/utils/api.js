@@ -52,8 +52,13 @@ function getStats() { return request('GET', '/api/fitness/stats/') }
 function getExercises() { return request('GET', '/api/fitness/exercises/') }
 function getCycle() { return request('GET', '/api/fitness/cycle/') }
 function startWorkout(data) { return request('POST', '/api/fitness/workouts/', data || { owner: getCurrentUser() }) }
-function logSet(workoutId, exerciseId, weight, reps, rir) {
-  return request('POST', '/api/fitness/sets/', { workout: workoutId, exercise: exerciseId, weight_kg: weight, reps, rir: rir || 0, owner: getCurrentUser() })
+function logSet(workoutId, exerciseId, weight, reps, rir, setNumber) {
+  return request('POST', '/api/fitness/sets/', {
+    workout_id: workoutId, exercise_id: exerciseId,
+    weight_kg: weight, reps, rpe: rir || 0,
+    set_number: setNumber,
+    owner: getCurrentUser()
+  })
 }
 function finishWorkout(workoutId, durationMin) {
   return request('PATCH', '/api/fitness/workouts/' + workoutId + '/', { duration_min: durationMin, owner: getCurrentUser() })

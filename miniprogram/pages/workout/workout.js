@@ -136,7 +136,7 @@ Page({
       const group = loggedGroups.find(g => g.name === ex.name)
       const setNum = group ? group.sets.length + 1 : 1
 
-      const res = await api.logSet(workoutId, ex.id, weight, reps, 0)
+      const res = await api.logSet(workoutId, ex.id, weight, reps, 0, setNum)
 
       // 更新本地已记录组
       const newSet = { num: setNum, weight_kg: weight, reps }

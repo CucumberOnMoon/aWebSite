@@ -3,7 +3,6 @@ const api = require('../../utils/api')
 const CAT_COLORS = { Push: '#f85149', Pull: '#d29922', Legs: '#3fb950' }
 const EX_COLORS = ['#58a6ff', '#bc8cff', '#39d2c0', '#f5c342', '#f85149', '#3fb950', '#d29922', '#1f6feb', '#da3633', '#238636']
 
-// Core compound lifts for strength curve
 const COMPOUND_NAMES = ['杠铃深蹲', '杠铃卧推', '罗马尼亚硬拉', '硬拉']
 
 Page({
@@ -13,65 +12,60 @@ Page({
     userList: [],
     selectedUser: '',
     hasData: false,
-    // 绑定相关
     showBind: false, showBindPicker: false, showCreate: false,
     wechatOpenid: '', unboundList: [], newUserName: '',
 
-    // ── 6 大卡片数据 ──
-    // ① 概览
     totals: {},
-    // ② PR 记录
     prList: [],
-    // ③ 力量曲线
     strengthLifts: [],
-    // ④ 周训练量
     weeklyVolumes: [],
-    // ⑤ 训练频率（日历）
-    calGrid: [],
-    calMonths: [],
-    // ⑥ 推拉腿分布
+    calGrid: [], calMonths: [],
     catBars: [],
-    // ⑦ 上次训练详情
     lastWorkout: null,
     lastWorkoutStr: '',
-    // ⑧ 亮点
     highlights: [],
   },
 
   async onShow() {
-    if (!this.data.wxDone) {
-      await this.autoWechatLogin()
+    // 1) 先看缓存直接加载数据，不等微信登录
+    const cached = api.getCurrentUser()
+    if (cached) {
+      this.setData({ selectedUser: cached })
+      this.loadAll(cached)
     }
-    this.loadUsers()
-    const saved = api.getCurrentUser()
-    if (saved) {
-      this.setData({ selectedUser: saved })
-      this.loadAll(saved)
+    // 2) 后台微信登录
+    if (!this.data.wxDone) {
+      await this.tryWechatLogin()
+      // 登录后刷新用户列表
+      this.loadUsers()
+      const wxUser = api.getCurrentUser()
+      // 如果微信登录拿到了不同用户，重新加载
+      if (wxUser && wxUser !== cached) {
+        this.setData({ selectedUser: wxUser })
+        this.loadAll(wxUser)
+      }
+      // 如果没任何用户，弹创建框
+      if (!wxUser && !cached) {
+        this.setData({ showCreate: true, newUserName: '' })
+      }
+    } else {
+      this.loadUsers()
     }
   },
 
-  async autoWechatLogin() {
+  async tryWechatLogin() {
     this.setData({ wxDone: true })
     try {
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)
-      if (res.bound && res.username) {
+      if (res && res.bound && res.username) {
         api.setCurrentUser(res.username)
-        this.setData({ selectedUser: res.username })
-        // 只设用户，不调 loadAll — onShow 会统一调
-        return
+      } else if (res && res.openid) {
+        // 未绑定，记下 openid 弹创建框
+        this.setData({ wechatOpenid: res.openid, showCreate: true, newUserName: '' })
       }
-      this.setData({ wechatOpenid: res.openid, showCreate: true, newUserName: '' })
     } catch (_) {
-      // wechatLogin 失败（网络/API），有缓存走缓存，没缓存弹创建
-      this.loadUsers()
-      const saved = api.getCurrentUser()
-      if (saved) {
-        this.setData({ selectedUser: saved })
-        this.loadAll(saved)
-      } else {
-        this.setData({ showCreate: true, newUserName: '' })
-      }
+      // 微信登录失败，啥也不做（缓存数据已在 onShow 加载）
     }
   },
 
@@ -100,29 +94,21 @@ Page({
         return
       }
 
-      // 并发获取：全部训练 + 复合动作历史
       const [allWorkouts, compoundData] = await Promise.all([
         this.retryGetWorkouts(),
         this.fetchCompoundHistory(),
       ])
 
-      // PR 记录
       const prs = (stats.prs || []).filter(p => p.weight_kg > 0)
       const prList = prs.map(p => ({
         name: p.name, weight: p.weight_kg, reps: p.reps, date: p.date,
         category: p.category, tagClass: 'tag ' + (p.category || '').toLowerCase()
       }))
 
-      // 力量曲线
       const strengthLifts = this.buildStrengthLifts(compoundData)
-
-      // 周训练量
       const weeklyVolumes = this.buildWeeklyVolumes(allWorkouts)
-
-      // 训练频率
       const calData = this.buildCalendar(allWorkouts)
 
-      // 推拉腿分布
       const byType = stats.by_type || []
       const maxCat = Math.max(...byType.map(t => t.volume || 0), 1)
       const catBars = byType.map(t => ({
@@ -130,8 +116,8 @@ Page({
         volK: (t.volume / 1000).toFixed(0), pct: (t.volume / maxCat * 100).toFixed(0)
       }))
 
-      // 上次训练
       let lastWorkout = null
+      let lastWorkoutStr = ''
       try {
         const lw = await api.getLastWorkout()
         if (lw && lw.sets) {
@@ -143,11 +129,10 @@ Page({
           }
           const dur = lw.duration_min || 0
           lastWorkout = { date: lw.date, type: lw.type || '', duration: dur, exercises: Object.values(exMap) }
-          this.setData({ lastWorkoutStr: lw.date + ' · ' + (lw.type || '') + ' · ' + dur + '分' })
+          lastWorkoutStr = lw.date + ' · ' + (lw.type || '') + ' · ' + dur + '分'
         }
       } catch (_) {}
 
-      // 亮点
       const highlights = this.computeHighlights(stats.recent || [], weeklyVolumes)
 
       hasData = true
@@ -155,7 +140,7 @@ Page({
         loading: false, hasData: true,
         totals, prList, strengthLifts, weeklyVolumes,
         calGrid: calData.grid, calMonths: calData.months,
-        catBars, lastWorkout, highlights
+        catBars, lastWorkout, lastWorkoutStr, highlights
       })
     } catch (e) {
       console.error('loadAll失败:', e)
@@ -164,7 +149,6 @@ Page({
     }
   },
 
-  // ── ③ 力量曲线 ───────────────────────────
   async fetchCompoundHistory() {
     const map = {}
     try {
@@ -176,15 +160,14 @@ Page({
         if (found) batch.push({ id: found.id, name: found.name })
       }
       if (!batch.length) return map
-      // 逐个请求，自动重试1次
       for (const item of batch) {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             const sets = await api.getSetHistory(item.id)
             if (sets && sets.length) { map[item.id] = sets; break }
           } catch (_) {
-            if (attempt === 1) break // 最后一次失败就算了
-            await new Promise(r => setTimeout(r, 500)) // 等500ms重试
+            if (attempt === 1) break
+            await new Promise(r => setTimeout(r, 500))
           }
         }
       }
@@ -209,27 +192,21 @@ Page({
     for (const [exId, sets] of Object.entries(compoundData)) {
       if (!sets.length) continue
       const name = sets[0].name
-
       const byDate = {}
       for (const s of sets) {
         const d = s.date
         if (!byDate[d] || s.weight_kg > byDate[d].weight) {
           byDate[d] = { weight: s.weight_kg, reps: s.reps }
         } else if (s.weight_kg === byDate[d].weight && s.reps > byDate[d].reps) {
-          // Same max weight, pick the set with more reps
           byDate[d] = { weight: s.weight_kg, reps: s.reps }
         }
       }
-
       const dates = Object.keys(byDate).sort()
       if (dates.length < 2) continue
-
       const dataPts = dates.map(d => ({ date: d, ...byDate[d] }))
       const maxWt = Math.max(...dataPts.map(p => p.weight))
       const minWt = Math.min(...dataPts.map(p => p.weight))
       const range = Math.max(maxWt - minWt, 1)
-
-      // Sample to max ~15 bars so phone screen doesn't get crammed
       const MAX_BARS = 15
       let sampled = dataPts
       if (dataPts.length > MAX_BARS) {
@@ -239,21 +216,17 @@ Page({
           sampled.push(dataPts[Math.round(i * step)])
         }
       }
-
       const bars = sampled.map(p => ({
         date: p.date.slice(5),
         pct: Math.max(((p.weight - minWt) / range * 70 + 10), 5),
         weight: p.weight, reps: p.reps
       }))
-
       const latest = dataPts[dataPts.length - 1]
-
       lifts.push({ name, bars, latest, maxWt, minWt })
     }
     return lifts
   },
 
-  // ── ④ 周训练量 ───────────────────────────
   buildWeeklyVolumes(workouts) {
     const weeks = {}
     for (const w of workouts) {
@@ -267,38 +240,26 @@ Page({
       weeks[key].volume += w.total_volume || 0
     }
     let vols = Object.values(weeks).sort((a, b) => a.week.localeCompare(b.week))
-    // Last 12 weeks
     vols = vols.slice(-12)
     const maxV = Math.max(...vols.map(v => v.volume), 1)
     return vols.map(v => ({
-      label: v.week.slice(5), // MM-DD
+      label: v.week.slice(5),
       volK: (v.volume / 1000).toFixed(0),
       pct: Math.max((v.volume / maxV * 100), 3)
     }))
   },
 
-  // ── ⑤ 训练频率热力图 ───────────────────────
   buildCalendar(workouts) {
     const today = new Date()
     const year = today.getFullYear()
-    const month = today.getMonth() // 0-indexed
-
-    // Build set of workout dates
+    const month = today.getMonth()
     const workoutDates = new Set()
-    for (const w of workouts) {
-      workoutDates.add(w.date)
-    }
-
-    // Generate current month grid
+    for (const w of workouts) workoutDates.add(w.date)
     const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const firstDay = new Date(year, month, 1).getDay() // 0=Sun
+    const firstDay = new Date(year, month, 1).getDay()
     const monthLabel = year + '年' + (month + 1) + '月'
-
     const grid = []
-    // Empty cells before first day
-    for (let i = 0; i < firstDay; i++) {
-      grid.push({ empty: true })
-    }
+    for (let i = 0; i < firstDay; i++) grid.push({ empty: true })
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
       grid.push({
@@ -307,11 +268,9 @@ Page({
         isToday: dateStr === today.toISOString().slice(0, 10)
       })
     }
-
     return { grid, months: [monthLabel] }
   },
 
-  // ── ⑧ 亮点 ──────────────────────────────
   computeHighlights(workouts, weekly) {
     const h = []
     if (!workouts || !workouts.length) return h
@@ -361,7 +320,6 @@ Page({
       this.setData({ selectedUser: name, showCreate: false })
       const users = await api.getUsers()
       this.setData({ userList: users || [] })
-      // 新用户直接跳转训练页记录第一次训练
       wx.showToast({ title: '创建成功，开始你的第一次训练吧！', icon: 'success', duration: 2000 })
       setTimeout(async () => {
         try {
@@ -394,7 +352,6 @@ Page({
       const idx = dow === 0 ? 6 : dow - 1
       const weekTypes = ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs', 'Rest']
       const todayType = weekTypes[idx] || 'Push'
-
       const workout = await api.startWorkout({
         date: dateStr, type: todayType, owner: api.getCurrentUser()
       })

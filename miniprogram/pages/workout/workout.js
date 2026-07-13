@@ -2,6 +2,13 @@ const api = require('../../utils/api')
 
 const WEEK_CYCLE = ['push', 'pull', 'legs', 'push', 'pull', 'legs', 'rest']
 
+// 组间休息时间（秒）
+function calcRestTime(exName) {
+  if (exName.includes('深蹲') || exName.includes('卧推')) return 180
+  if (exName.includes('划船') || exName.includes('下拉') || exName.includes('引体')) return 120
+  return 90
+}
+
 // 重量选项 2.5~150kg 步进2.5
 function genWeights() {
   const w = []
@@ -36,10 +43,15 @@ Page({
     weightOptions: WEIGHT_OPTIONS,
     weightLabels: WEIGHT_LABELS,
     repsOptions: REPS_OPTIONS,
-    repsLabels: REPS_LABELS
+    repsLabels: REPS_LABELS,
+    // 组间休息倒计时
+    resting: false,
+    restSeconds: 0,
+    restTotal: 0
   },
 
   timerRef: null,
+  restTimerRef: null,
 
   onLoad(options) {
     const wid = parseInt(options.wid)
@@ -50,6 +62,7 @@ Page({
 
   onUnload() {
     if (this.timerRef) clearInterval(this.timerRef)
+    if (this.restTimerRef) clearInterval(this.restTimerRef)
   },
 
   startTimer() {
@@ -77,7 +90,6 @@ Page({
         exLabels,
         loading: false
       })
-      // 加载该训练已有组数
       this.loadLoggedSets()
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'error' })
@@ -88,7 +100,6 @@ Page({
   async loadLoggedSets() {
     try {
       const allSets = await api.getWorkoutSets(this.data.workoutId)
-      // 按动作分组
       const groups = []
       const exMap = {}
       for (const s of allSets || []) {
@@ -104,9 +115,7 @@ Page({
         })
       }
       this.setData({ loggedGroups: groups })
-    } catch (_) {
-      // 没有数据也没关系
-    }
+    } catch (_) {}
   },
 
   // 三个下拉框切换
@@ -120,7 +129,7 @@ Page({
     this.setData({ repsIdx: e.detail.value })
   },
 
-  // 添加一组
+  // 添加一组 → 保存 → 开始组间倒计时
   async onAddSet() {
     const { exOptions, exIdx, weightOptions, weightIdx, repsOptions, repsIdx, workoutId, loggedGroups } = this.data
     const ex = exOptions[exIdx]
@@ -132,13 +141,12 @@ Page({
     wx.showLoading({ title: '保存...' })
 
     try {
-      // 查该动作在本次训练中已做几组
       const group = loggedGroups.find(g => g.name === ex.name)
       const setNum = group ? group.sets.length + 1 : 1
 
-      const res = await api.logSet(workoutId, ex.id, weight, reps, 0, setNum)
+      await api.logSet(workoutId, ex.id, weight, reps, 0, setNum)
 
-      // 更新本地已记录组
+      // 更新本地已记录
       const newSet = { num: setNum, weight_kg: weight, reps }
       if (group) {
         group.sets.push(newSet)
@@ -148,11 +156,34 @@ Page({
       this.setData({ loggedGroups: [...loggedGroups] })
 
       wx.hideLoading()
-      wx.showToast({ title: '✓ 第' + setNum + '组 ' + ex.name, icon: 'success', duration: 800 })
+      wx.showToast({ title: '✓ 第' + setNum + '组 ' + ex.name, icon: 'success', duration: 600 })
+
+      // 开始组间倒计时
+      this.startRestCountdown(ex.name)
     } catch (e) {
       wx.hideLoading()
       wx.showToast({ title: '保存失败', icon: 'error' })
     }
+  },
+
+  startRestCountdown(exName) {
+    // 清除上一个倒计时
+    if (this.restTimerRef) clearInterval(this.restTimerRef)
+
+    const total = calcRestTime(exName)
+    this.setData({ resting: true, restSeconds: total, restTotal: total })
+
+    this.restTimerRef = setInterval(() => {
+      let sec = this.data.restSeconds - 1
+      if (sec <= 0) {
+        clearInterval(this.restTimerRef)
+        this.restTimerRef = null
+        this.setData({ resting: false, restSeconds: 0 })
+        wx.showToast({ title: '休息结束 💪', icon: 'none', duration: 1000 })
+      } else {
+        this.setData({ restSeconds: sec })
+      }
+    }, 1000)
   },
 
   onFinish() {
@@ -162,6 +193,7 @@ Page({
       success: async (res) => {
         if (!res.confirm) return
         if (this.timerRef) clearInterval(this.timerRef)
+        if (this.restTimerRef) clearInterval(this.restTimerRef)
         const min = Math.floor((Date.now() - this.data.startTime) / 60000)
         try {
           await api.finishWorkout(this.data.workoutId, min)

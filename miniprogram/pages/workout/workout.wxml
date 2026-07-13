@@ -5,41 +5,52 @@
     <text class="text-muted">训练时长</text>
   </view>
 
-  <!-- 三个下拉框 -->
-  <view class="card">
-    <text class="card-title">添加一组</text>
-
-    <view class="picker-row">
-      <text class="picker-label">动作</text>
-      <picker mode="selector" range="{{exLabels}}" bindchange="onExChange">
-        <view class="picker-box">
-          <text class="picker-text">{{exLabels[exIdx] || '选择动作'}}</text>
-          <text class="picker-arrow">▾</text>
-        </view>
-      </picker>
+  <!-- 组间倒计时 -->
+  <view class="rest-overlay" wx:if="{{resting}}">
+    <text class="rest-label">组间休息</text>
+    <text class="rest-timer">{{Math.floor(restSeconds / 60)}}:{{('0' + restSeconds % 60).slice(-2)}}</text>
+    <view class="rest-bar-track">
+      <view class="rest-bar-fill" style="width:{{restSeconds / restTotal * 100}}%"></view>
     </view>
+  </view>
 
-    <view class="picker-row">
-      <text class="picker-label">重量</text>
-      <picker mode="selector" range="{{weightLabels}}" bindchange="onWeightChange">
-        <view class="picker-box">
-          <text class="picker-text">{{weightLabels[weightIdx] || '选择重量'}}</text>
-          <text class="picker-arrow">▾</text>
-        </view>
-      </picker>
+  <!-- 添加一组（倒计时时隐藏） -->
+  <view wx:else>
+    <view class="card">
+      <text class="card-title">添加一组</text>
+
+      <view class="picker-row">
+        <text class="picker-label">动作</text>
+        <picker mode="selector" range="{{exLabels}}" bindchange="onExChange">
+          <view class="picker-box">
+            <text class="picker-text">{{exLabels[exIdx] || '选择动作'}}</text>
+            <text class="picker-arrow">▾</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="picker-row">
+        <text class="picker-label">重量</text>
+        <picker mode="selector" range="{{weightLabels}}" bindchange="onWeightChange">
+          <view class="picker-box">
+            <text class="picker-text">{{weightLabels[weightIdx] || '选择重量'}}</text>
+            <text class="picker-arrow">▾</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="picker-row">
+        <text class="picker-label">次数</text>
+        <picker mode="selector" range="{{repsLabels}}" bindchange="onRepsChange">
+          <view class="picker-box">
+            <text class="picker-text">{{repsLabels[repsIdx] || '选择次数'}}</text>
+            <text class="picker-arrow">▾</text>
+          </view>
+        </picker>
+      </view>
+
+      <button class="btn-add" bindtap="onAddSet">+ 添加一组</button>
     </view>
-
-    <view class="picker-row">
-      <text class="picker-label">次数</text>
-      <picker mode="selector" range="{{repsLabels}}" bindchange="onRepsChange">
-        <view class="picker-box">
-          <text class="picker-text">{{repsLabels[repsIdx] || '选择次数'}}</text>
-          <text class="picker-arrow">▾</text>
-        </view>
-      </picker>
-    </view>
-
-    <button class="btn-add" bindtap="onAddSet">+ 添加一组</button>
   </view>
 
   <!-- 已记录组 -->

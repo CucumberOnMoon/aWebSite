@@ -52,6 +52,7 @@
         <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">组数</text></view>
         <view class="stat-card"><text class="num">{{totals.volK}}k</text><text class="label">容量kg</text></view>
       </view>
+      <button class="btn-start-workout" bindtap="onStartFirstWorkout">🏋️ 开始训练</button>
     </view>
 
     <view wx:if="{{!hasData}}" class="empty-state">
@@ -64,7 +65,7 @@
       <!-- ② 上次训练 -->
       <view class="card" wx:if="{{lastWorkout}}">
         <text class="card-title">🕐 上次训练</text>
-        <text class="text-muted">{{lastWorkout.date}} · {{lastWorkout.type}} · {{lastWorkout.duration}}分</text>
+        <text class="text-muted">{{lastWorkout.date}} · {{lastWorkout.type}} · {{lastWorkout.duration || 0}}分</text>
         <view class="last-workout">
           <view class="ex-group" wx:for="{{lastWorkout.exercises}}" wx:key="exName">
             <text class="ex-title">{{item.exName}}</text>

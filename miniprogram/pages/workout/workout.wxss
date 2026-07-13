@@ -48,3 +48,10 @@
 
 .loading { text-align: center; padding: 20px; color: #8b949e; font-size: 13px; }
 .text-muted { font-size: 12px; color: #8b949e; text-align: center; display: block; }
+
+/* 组间倒计时 */
+.rest-overlay { text-align: center; padding: 40px 16px; }
+.rest-label { font-size: 14px; color: #8b949e; display: block; margin-bottom: 12px; }
+.rest-timer { font-size: 64px; font-weight: 700; color: #58a6ff; display: block; letter-spacing: 4px; margin-bottom: 16px; }
+.rest-bar-track { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin: 0 40px; }
+.rest-bar-fill { height: 100%; background: linear-gradient(90deg, #1f6feb, #58a6ff); border-radius: 3px; transition: width 1s linear; }

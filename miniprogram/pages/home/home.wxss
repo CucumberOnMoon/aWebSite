@@ -36,6 +36,14 @@
 }
 .btn-start:active { opacity: 0.8; }
 
+.btn-start-workout {
+  display: block; width: 60%; margin: 12px auto 0;
+  background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  color: white; border: none; border-radius: 10px;
+  padding: 10px 16px; font-size: 14px; font-weight: 600; text-align: center;
+}
+.btn-start-workout:active { opacity: 0.8; }
+
 /* ① 概览统计 */
 .stat-row { display: flex; gap: 8px; padding: 12px 0 0; }
 .stat-card { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px 8px; text-align: center; }

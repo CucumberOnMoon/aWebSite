@@ -11,6 +11,7 @@ Page({
     wxDone: false,
     userList: [],
     selectedUser: '',
+    boundUser: '',
     hasData: false,
     showBind: false, showBindPicker: false, showCreate: false,
     wechatOpenid: '', unboundList: [], newUserName: '',
@@ -33,9 +34,9 @@ Page({
       const res = await api.wechatLogin(code)
       if (res && res.bound && res.username) {
         api.setCurrentUser(res.username)
-        this.setData({ selectedUser: res.username, loading: false })
+        this.setData({ selectedUser: res.username, boundUser: res.username, loading: false })
         this.loadAll(res.username)
-        this.loadUsers()
+        await this.loadUsers()
       } else if (res && res.openid) {
         this.setData({ wechatOpenid: res.openid, loading: false })
         this.loadUsers()
@@ -287,7 +288,7 @@ Page({
       await api.wechatBind(this.data.wechatOpenid, username)
       wx.hideLoading()
       api.setCurrentUser(username)
-      this.setData({ selectedUser: username, showBindPicker: false, showBind: false })
+      this.setData({ selectedUser: username, boundUser: username, showBindPicker: false, showBind: false })
       this.loadAll(username)
       wx.showToast({ title: '绑定成功', icon: 'success' })
     } catch (e) {
@@ -306,7 +307,7 @@ Page({
       await api.wechatCreate(this.data.wechatOpenid, name)
       wx.hideLoading()
       api.setCurrentUser(name)
-      this.setData({ selectedUser: name, showCreate: false })
+      this.setData({ selectedUser: name, showCreate: false, boundUser: name })
       const users = await api.getUsers()
       this.setData({ userList: users || [] })
       wx.showToast({ title: '创建成功，开始你的第一次训练吧！', icon: 'success', duration: 2000 })

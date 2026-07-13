@@ -28,24 +28,12 @@ Page({
   },
 
   async onShow() {
-    if (this.data.wxDone) {
-      // 已登录过，直接读缓存
-      this.loadUsers()
-      const saved = api.getCurrentUser()
-      if (saved) {
-        this.setData({ selectedUser: saved, boundUser: saved })
-        this.loadAll(saved)
-      }
-      return
-    }
-
-    // 首次：微信登录
+    // 每次打开都调微信登录
     this.loadUsers()
     this.setData({ loading: true })
     try {
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)
-      this.setData({ wxDone: true })
       if (res && res.bound && res.username) {
         api.setCurrentUser(res.username)
         this.setData({ selectedUser: res.username, boundUser: res.username, loading: false })
@@ -66,7 +54,7 @@ Page({
         this.setData({ showCreate: true, loading: false, newUserName: '' })
       }
     } catch (_) {
-      this.setData({ wxDone: true, showCreate: true, loading: false, newUserName: '' })
+      this.setData({ showCreate: true, loading: false, newUserName: '' })
     }
   },
 

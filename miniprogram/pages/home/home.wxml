@@ -10,30 +10,76 @@
     </picker>
   </view>
 
+  <!-- 绑定弹窗 -->
+  <view class="modal-overlay" wx:if="{{showBind}}">
+    <view class="modal">
+      <text class="modal-title">绑定微信</text>
+      <text class="text-muted" style="margin:8px 0">微信未绑定用户，选择操作：</text>
+      <button class="btn-modal" bindtap="onBindExisting">绑定已有用户（{{unboundList.length}}个可选）</button>
+      <button class="btn-modal secondary" bindtap="onCreateUser">创建新用户</button>
+      <text class="modal-cancel" bindtap="onCancelBind">取消</text>
+    </view>
+  </view>
+  <view class="modal-overlay" wx:if="{{showBindPicker}}">
+    <view class="modal">
+      <text class="modal-title">选择要绑定的用户</text>
+      <view class="unbound-row" wx:for="{{unboundList}}" wx:key="*this" bindtap="onConfirmBind" data-user="{{item}}">
+        <text>{{item}}</text>
+      </view>
+      <text class="modal-cancel" bindtap="onCancelBindPicker">取消</text>
+    </view>
+  </view>
+  <view class="modal-overlay" wx:if="{{showCreate}}">
+    <view class="modal">
+      <text class="modal-title">创建新用户</text>
+      <input class="modal-input" placeholder="输入用户名" model:value="{{newUserName}}" />
+      <button class="btn-modal" bindtap="onConfirmCreate">创建并绑定</button>
+      <text class="modal-cancel" bindtap="onCancelCreate">取消</text>
+    </view>
+  </view>
+
   <view wx:if="{{!selectedUser}}" class="empty-state">
     <text class="text-muted">👆 请先选择一个用户</text>
   </view>
 
   <view wx:else>
-    <!-- Hero -->
-    <view class="hero">
-      <text class="hero-title">🏋️ {{selectedUser}} 的训练数据</text>
+
+    <!-- Hero + ① 概览 -->
+    <view class="hero-section">
+      <text class="hero-title">🏋️ {{selectedUser}}</text>
+      <view class="stat-row">
+        <view class="stat-card"><text class="num">{{totals.total_workouts}}</text><text class="label">训练</text></view>
+        <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">组数</text></view>
+        <view class="stat-card"><text class="num">{{totals.volK}}k</text><text class="label">容量kg</text></view>
+      </view>
     </view>
 
-    <!-- 暂无数据 -->
     <view wx:if="{{!hasData}}" class="empty-state">
-      <text class="text-muted">暂无训练数据</text>
+      <text class="text-muted">暂无训练数据，来记录你的第一次训练吧！</text>
+      <button class="btn-start" bindtap="onStartFirstWorkout">🏋️ 开始第一次训练</button>
     </view>
 
     <view wx:else>
-      <!-- 统计卡片 -->
-      <view class="stat-row">
-        <view class="stat-card"><text class="num">{{totals.total_workouts}}</text><text class="label">训练次数</text></view>
-        <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">总组数</text></view>
-        <view class="stat-card"><text class="num">{{totals.total_volume}}kg</text><text class="label">总训练容量</text></view>
+
+      <!-- ② 上次训练 -->
+      <view class="card" wx:if="{{lastWorkout}}">
+        <text class="card-title">🕐 上次训练</text>
+        <text class="text-muted">{{lastWorkout.date}} · {{lastWorkout.type}} · {{lastWorkout.duration}}分</text>
+        <view class="last-workout">
+          <view class="ex-group" wx:for="{{lastWorkout.exercises}}" wx:key="exName">
+            <text class="ex-title">{{item.exName}}</text>
+            <view class="ex-sets">
+              <view class="set-detail" wx:for="{{item.sets}}" wx:key="id">
+                <text class="set-num">第{{item.set_number}}组</text>
+                <text class="set-val">{{item.weight_kg}}kg</text>
+                <text class="text-muted">× {{item.reps}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
       </view>
 
-      <!-- Highlights -->
+      <!-- ③ 亮点 -->
       <view class="card" wx:if="{{highlights.length}}">
         <text class="card-title">⚡ 亮点</text>
         <view class="hl-item" wx:for="{{highlights}}" wx:key="index">
@@ -42,20 +88,66 @@
         </view>
       </view>
 
-      <!-- 每周趋势 -->
-      <view class="card">
-        <text class="card-title">📊 每周训练容量趋势</text>
-        <view class="bar-chart">
-          <view class="bar-row" wx:for="{{weeklyBars}}" wx:key="week">
-            <text class="bar-label">{{item.label}}</text>
-            <view class="bar-track"><view class="bar-fill" style="width:{{item.pct}}%; background:#58a6ff;"></view></view>
-            <text class="bar-val">{{item.volK}}k</text>
+      <!-- ④ PR 记录 -->
+      <view class="card" wx:if="{{prList.length}}">
+        <text class="card-title">🏆 个人纪录 <text class="card-sub">各动作最高重量</text></text>
+        <view class="pr-item" wx:for="{{prList}}" wx:key="name">
+          <text class="{{item.tagClass}}">{{item.category[0]}}</text>
+          <text class="pr-name">{{item.name}}</text>
+          <text class="pr-weight">{{item.weight}}kg</text>
+          <text class="text-muted">× {{item.reps}}</text>
+          <text class="pr-date">{{item.date.slice(5)}}</text>
+        </view>
+      </view>
+
+      <!-- ⑤ 力量曲线 -->
+      <view class="card" wx:if="{{strengthLifts.length}}">
+        <text class="card-title">📈 力量趋势 <text class="card-sub">复合动作重量变化</text></text>
+        <view class="sc-lift" wx:for="{{strengthLifts}}" wx:key="name">
+          <view class="sc-header">
+            <text class="sc-name">{{item.name}}</text>
+            <text class="sc-latest">最新 {{item.latest.weight}}kg × {{item.latest.reps}}</text>
+          </view>
+          <view class="sc-chart">
+            <view class="sc-bar-wrap" wx:for="{{item.bars}}" wx:key="date">
+              <view class="sc-bar" style="height:{{item.pct}}%">
+                <text class="sc-bar-val">{{item.weight}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="sc-labels">
+            <text class="sc-label" wx:for="{{item.bars}}" wx:key="date">{{item.date}}</text>
           </view>
         </view>
       </view>
 
-      <!-- 推拉腿分布 -->
-      <view class="card">
+      <!-- ⑥ 周训练量 -->
+      <view class="card" wx:if="{{weeklyVolumes.length}}">
+        <text class="card-title">📊 周训练量 <text class="card-sub">近12周</text></text>
+        <view class="bar-chart-h">
+          <view class="bar-row-h" wx:for="{{weeklyVolumes}}" wx:key="label">
+            <text class="bar-label-h">{{item.label}}</text>
+            <view class="bar-track-h"><view class="bar-fill-h" style="width:{{item.pct}}%"></view></view>
+            <text class="bar-val-h">{{item.volK}}k</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- ⑦ 训练频率 -->
+      <view class="card" wx:if="{{calGrid.length}}">
+        <text class="card-title">🗓️ 训练频率 <text class="card-sub">{{calMonths[0]}}</text></text>
+        <view class="cal-weekdays">
+          <text wx:for="{{['日','一','二','三','四','五','六']}}" wx:key="*this" class="cal-wd">{{item}}</text>
+        </view>
+        <view class="cal-grid">
+          <view wx:for="{{calGrid}}" wx:key="day" class="cal-cell {{item.empty ? 'cal-empty' : ''}} {{item.hasWorkout ? 'cal-done' : ''}} {{item.isToday ? 'cal-today' : ''}}">
+            <text wx:if="{{!item.empty}}">{{item.day}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- ⑧ 推拉腿分布 -->
+      <view class="card" wx:if="{{catBars.length}}">
         <text class="card-title">🥧 推拉腿分布</text>
         <view class="pie-legend">
           <view class="pie-item" wx:for="{{catBars}}" wx:key="type">
@@ -67,33 +159,6 @@
         </view>
       </view>
 
-      <!-- 动作详细数据 -->
-      <view class="card">
-        <text class="card-title">📋 动作详细数据</text>
-        <view class="ex-list" wx:for="{{exBars}}" wx:key="name">
-          <text class="ex-name">{{item.name}}</text>
-          <view class="ex-track"><view class="ex-fill" style="width:{{item.pct}}%; background:{{item.color}}"></view></view>
-          <text class="ex-val">{{item.volK}}k</text>
-        </view>
-      </view>
-
-      <!-- 最近训练 -->
-      <view class="card">
-        <text class="card-title">🕐 最近训练</text>
-        <view class="tab-row">
-          <text class="tab {{tabFilter === 'All' ? 'active' : ''}}" bindtap="onTab" data-tab="All">全部</text>
-          <text class="tab {{tabFilter === 'Push' ? 'active' : ''}}" bindtap="onTab" data-tab="Push">推</text>
-          <text class="tab {{tabFilter === 'Pull' ? 'active' : ''}}" bindtap="onTab" data-tab="Pull">拉</text>
-          <text class="tab {{tabFilter === 'Legs' ? 'active' : ''}}" bindtap="onTab" data-tab="Legs">腿</text>
-        </view>
-        <view class="session-row" wx:for="{{filteredRecent}}" wx:key="id">
-          <text class="{{item.tagClass}}">{{item.typeL}}</text>
-          <view class="session-info">
-            <text class="session-date">{{item.date}}</text>
-            <text class="text-muted">{{item.sets}}组 · {{item.volume}}kg · {{item.duration}}分</text>
-          </view>
-        </view>
-      </view>
     </view>
   </view>
 

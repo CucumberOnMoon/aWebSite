@@ -31,10 +31,15 @@ urlpatterns = [
     path('api/fitness/workouts/<int:pk>/', api.workout_detail, name='api_workout_detail'),
     path('api/fitness/exercises/', api.exercise_list, name='api_exercise_list'),
     path('api/fitness/sets/', api.set_create, name='api_set_create'),
+    path('api/fitness/sets/history/', api.set_history, name='api_set_history'),
     path('api/fitness/stats/', api.stats_overview, name='api_stats'),
     path('api/fitness/cycle/', api.cycle_detail, name='api_cycle_detail'),
     path('api/fitness/cycle/<int:pk>/', api.cycle_update, name='api_cycle_update'),
     path('api/fitness/users/', api.api_users, name='api_users'),
+    path('api/fitness/wechat/login/', api.wechat_login, name='wechat_login'),
+    path('api/fitness/wechat/bind/', api.wechat_bind, name='wechat_bind'),
+    path('api/fitness/wechat/create/', api.wechat_create, name='wechat_create'),
+    path('api/fitness/wechat/unbound/', api.wechat_unbound, name='wechat_unbound'),
 ]
 
 if settings.DEBUG:

@@ -159,3 +159,7 @@ LOGOUT_REDIRECT_URL = '/fitness/'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+
+# WeChat Mini Program
+WX_APPID = os.environ.get('WX_APPID', 'wx06ccc7d635a3bdc0')
+WX_APPSECRET = os.environ.get('WX_APPSECRET', 'c1b95130b164a074ed3eae08d4b6018e')

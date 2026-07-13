@@ -39,53 +39,50 @@ Page({
   },
 
   async onShow() {
-   if (!this.data.wxDone) {
-     this.autoWechatLogin()
-   } else {
-     this.loadUsers()
-     const saved = api.getCurrentUser()
-     if (saved) {
-       this.setData({ selectedUser: saved })
-       this.loadAll(saved)
-     }
-   }
- },
+    if (!this.data.wxDone) {
+      await this.autoWechatLogin()
+    }
+    this.loadUsers()
+    const saved = api.getCurrentUser()
+    if (saved) {
+      this.setData({ selectedUser: saved })
+      this.loadAll(saved)
+    }
+  },
 
- async autoWechatLogin() {
-   this.setData({ wxDone: true })
-   try {
-     const { code } = await wx.login()
-     const res = await api.wechatLogin(code)
-     if (res.bound && res.username) {
-       api.setCurrentUser(res.username)
-       this.setData({ selectedUser: res.username })
-       this.loadUsers()
-       this.loadAll(res.username)
-       return
-     }
-     // 未绑定，加载用户列表
-     this.setData({ wechatOpenid: res.openid })
-     this.loadUsers()
-     try {
-       const unbound = await api.getUnbound()
-       if (!unbound || unbound.length === 0) {
-         this.setData({ showCreate: true, newUserName: '' })
-       } else {
-         this.setData({ showBind: true, unboundList: unbound })
-       }
-     } catch (_) {
-       this.setData({ showCreate: true, newUserName: '' })
-     }
-   } catch (_) {
-     // wechatLogin失败（如网络问题），尝试从缓存加载用户
-     this.loadUsers()
-     const saved = api.getCurrentUser()
-     if (saved) {
-       this.setData({ selectedUser: saved })
-       this.loadAll(saved)
-     }
-   }
- },
+  async autoWechatLogin() {
+    this.setData({ wxDone: true })
+    try {
+      const { code } = await wx.login()
+      const res = await api.wechatLogin(code)
+      if (res.bound && res.username) {
+        api.setCurrentUser(res.username)
+        this.setData({ selectedUser: res.username })
+        // 只设用户，不调 loadAll — onShow 会统一调
+        return
+      }
+      this.setData({ wechatOpenid: res.openid })
+      this.loadUsers()
+      try {
+        const unbound = await api.getUnbound()
+        if (!unbound || unbound.length === 0) {
+          this.setData({ showCreate: true, newUserName: '' })
+        } else {
+          this.setData({ showBind: true, unboundList: unbound })
+        }
+      } catch (_) {
+        this.setData({ showCreate: true, newUserName: '' })
+      }
+    } catch (_) {
+      // wechatLogin 失败，从缓存加载
+      this.loadUsers()
+      const saved = api.getCurrentUser()
+      if (saved) {
+        this.setData({ selectedUser: saved })
+        this.loadAll(saved)
+      }
+    }
+  },
 
   async loadUsers() {
     try { this.setData({ userList: await api.getUsers() || [] }) } catch (_) {}

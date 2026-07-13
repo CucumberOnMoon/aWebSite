@@ -8,7 +8,7 @@
   <!-- 组间倒计时 -->
   <view class="rest-overlay" wx:if="{{resting}}">
     <text class="rest-label">组间休息</text>
-    <text class="rest-timer">{{Math.floor(restSeconds / 60)}}:{{('0' + restSeconds % 60).slice(-2)}}</text>
+    <text class="rest-timer">{{restTimeStr}}</text>
     <view class="rest-bar-track">
       <view class="rest-bar-fill" style="width:{{restSeconds / restTotal * 100}}%"></view>
     </view>

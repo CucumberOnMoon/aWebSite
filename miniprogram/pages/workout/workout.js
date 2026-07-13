@@ -47,7 +47,8 @@ Page({
     // 组间休息倒计时
     resting: false,
     restSeconds: 0,
-    restTotal: 0
+    restTotal: 0,
+    restTimeStr: ''
   },
 
   timerRef: null,
@@ -167,11 +168,11 @@ Page({
   },
 
   startRestCountdown(exName) {
-    // 清除上一个倒计时
     if (this.restTimerRef) clearInterval(this.restTimerRef)
 
     const total = calcRestTime(exName)
-    this.setData({ resting: true, restSeconds: total, restTotal: total })
+    const fmt = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0')
+    this.setData({ resting: true, restSeconds: total, restTotal: total, restTimeStr: fmt(total) })
 
     this.restTimerRef = setInterval(() => {
       let sec = this.data.restSeconds - 1
@@ -181,7 +182,7 @@ Page({
         this.setData({ resting: false, restSeconds: 0 })
         wx.showToast({ title: '休息结束 💪', icon: 'none', duration: 1000 })
       } else {
-        this.setData({ restSeconds: sec })
+        this.setData({ restSeconds: sec, restTimeStr: fmt(sec) })
       }
     }, 1000)
   },

@@ -33,6 +33,7 @@ Page({
     catBars: [],
     // ⑦ 上次训练详情
     lastWorkout: null,
+    lastWorkoutStr: '',
     // ⑧ 亮点
     highlights: [],
   },
@@ -152,7 +153,9 @@ Page({
             if (!exMap[en]) exMap[en] = { exName: en, sets: [] }
             exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
           }
-          lastWorkout = { date: lw.date, type: lw.type || '', duration: lw.duration_min || 0, exercises: Object.values(exMap) }
+          const dur = lw.duration_min || 0
+          lastWorkout = { date: lw.date, type: lw.type || '', duration: dur, exercises: Object.values(exMap) }
+          this.setData({ lastWorkoutStr: lw.date + ' · ' + (lw.type || '') + ' · ' + dur + '分' })
         }
       } catch (_) {}
 

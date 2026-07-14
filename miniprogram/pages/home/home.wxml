@@ -182,14 +182,20 @@
       <view class="ex-overlay" wx:if="{{showExDetail}}" catchtap="dismissExDetail">
         <view class="ex-popup" catchtap="noop">
           <text class="ex-popup-name">{{exDetailData && exDetailData.name}}</text>
-          <view class="ex-popup-section">
-            <text class="ex-popup-label">🎯 目标肌肉</text>
-            <text class="ex-popup-text">{{exDetailData && exDetailData.muscles}}</text>
+          <view class="ex-muscle-imgs" wx:if="{{exDetailData}}">
+            <view class="ex-muscle-card">
+              <text class="ex-muscle-label">🔴 主动肌</text>
+              <image class="ex-muscle-img" src="/images/ex-muscles/{{exDetailData.name}}_主动肌.png" mode="aspectFit"/>
+            </view>
+            <view class="ex-muscle-card">
+              <text class="ex-muscle-label">🟡 协同肌</text>
+              <image class="ex-muscle-img" src="/images/ex-muscles/{{exDetailData.name}}_协同肌.png" mode="aspectFit"/>
+            </view>
           </view>
-          <view class="ex-popup-section">
-            <text class="ex-popup-label">⚠️ 注意事项</text>
-            <text class="ex-popup-text">{{exDetailData && exDetailData.notes}}</text>
-          </view>
+          <text class="ex-popup-label">🎯 目标肌肉</text>
+          <text class="ex-popup-text">{{exDetailData && exDetailData.muscles}}</text>
+          <text class="ex-popup-label" style="margin-top:10px">⚠️ 注意事项</text>
+          <text class="ex-popup-text">{{exDetailData && exDetailData.notes}}</text>
           <text class="ex-popup-close" bindtap="dismissExDetail">关闭</text>
         </view>
       </view>

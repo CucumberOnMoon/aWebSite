@@ -1,5 +1,6 @@
 <scroll-view scroll-y class="page">
-  <view class="card" wx:for="{{list}}" wx:key="id">
+  <view class="card card-{{item.type}}" wx:for="{{list}}" wx:key="id"
+        data-wid="{{item.id}}" data-wtype="{{item.type}}" bindtap="onHistTap">
     <view class="hist-header">
       <text class="card-title">{{item.date}}</text>
       <text class="tag {{item.type}}">{{item.typeLabel}}</text>
@@ -11,4 +12,22 @@
 
   <view class="loading" wx:if="{{loading}}">加载中...</view>
   <view class="empty" wx:elif="{{!list.length}}">暂无训练记录</view>
+
+  <!-- 弹窗 -->
+  <view class="cal-overlay" wx:if="{{calPopup}}" catchtap="dismissCalPopup">
+    <view class="cal-popup" catchtap="{{''}}">
+      <text class="cal-popup-title" wx:if="{{calPopupData}}">{{calPopupData.date}} · {{calPopupData.type}} · {{calPopupData.duration}}分</text>
+      <text class="cal-popup-title" wx:else>加载中...</text>
+      <view class="cal-popup-ex" wx:for="{{calPopupData && calPopupData.exercises || []}}" wx:key="exName">
+        <text class="ex-title">{{item.exName}}</text>
+        <view class="ex-sets">
+          <view class="set-detail" wx:for="{{item.sets}}" wx:key="id">
+            <text class="set-num">{{item.set_number}}</text>
+            <text class="set-val">{{item.weight_kg}}kg</text>
+            <text class="text-muted">× {{item.reps}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
 </scroll-view>

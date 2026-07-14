@@ -3,7 +3,8 @@ const api = require('../../utils/api')
 Page({
   data: {
     list: [],
-    loading: true
+    loading: true,
+    calPopup: null, calPopupData: null,
   },
 
   onShow() {
@@ -25,5 +26,33 @@ Page({
     } catch (_) {
       this.setData({ loading: false })
     }
-  }
+  },
+
+  async onHistTap(e) {
+    const wid = e.currentTarget.dataset.wid
+    const wtype = e.currentTarget.dataset.wtype || ''
+    if (!wid) return
+    this.setData({ calPopup: { type: wtype }, calPopupData: null })
+    try {
+      const data = await api.getWorkoutSets(wid)
+      if (data && data.sets) {
+        const exMap = {}
+        for (const s of data.sets) {
+          const en = s.exercise || ''
+          if (!exMap[en]) exMap[en] = { exName: en, sets: [] }
+          exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
+        }
+        this.setData({ calPopupData: {
+          date: data.date, type: data.type, duration: data.duration_min,
+          exercises: Object.values(exMap)
+        }})
+      }
+    } catch (_) {
+      this.setData({ calPopup: null, calPopupData: null })
+    }
+  },
+
+  dismissCalPopup() {
+    this.setData({ calPopup: null, calPopupData: null })
+  },
 })

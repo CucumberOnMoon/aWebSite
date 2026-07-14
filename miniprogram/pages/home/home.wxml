@@ -52,7 +52,7 @@
         <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">组数</text></view>
         <view class="stat-card"><text class="num">{{totals.volK}}k</text><text class="label">容量kg</text></view>
       </view>
-      <button class="btn-start-workout" wx:if="{{selectedUser === boundUser}}" bindtap="onStartFirstWorkout">🏋️ 开始训练</button>
+      <button class="btn-start-workout" wx:if="{{selectedUser === boundUser && selectedUser !== 'howard'}}" bindtap="onStartFirstWorkout">🏋️ 开始训练</button>
     </view>
 
     <view wx:if="{{!hasData}}" class="empty-state">
@@ -68,10 +68,10 @@
         <text class="text-muted">{{lastWorkoutStr}}</text>
         <view class="last-workout">
           <view class="ex-group" wx:for="{{lastWorkout.exercises}}" wx:key="exName">
-            <text class="ex-title">{{item.exName}}</text>
+            <text class="ex-title" bindtap="onExNameTap" data-exname="{{item.exName}}">{{item.exName}}</text>
             <view class="ex-sets">
               <view class="set-detail" wx:for="{{item.sets}}" wx:key="id">
-                <text class="set-num">第{{item.set_number}}组</text>
+                <text class="set-num">{{item.set_number}}</text>
                 <text class="set-val">{{item.weight_kg}}kg</text>
                 <text class="text-muted">× {{item.reps}}</text>
               </view>
@@ -85,41 +85,57 @@
         <text class="card-title">⚡ 亮点</text>
         <view class="hl-item" wx:for="{{highlights}}" wx:key="index">
           <text wx:if="{{item.type === 'best'}}" class="hl-best">🔥 {{item.text}}</text>
+          <text wx:elif="{{item.type === 'summary'}}" class="hl-summary">{{item.text}}</text>
           <text wx:else class="hl-info">📈 {{item.text}}</text>
         </view>
       </view>
 
       <!-- ④ PR 记录 -->
       <view class="card" wx:if="{{prList.length}}">
-        <text class="card-title">🏆 个人纪录 <text class="card-sub">各动作最高重量</text></text>
-        <view class="pr-item" wx:for="{{prList}}" wx:key="name">
+        <view class="card-title-wrap" bindtap="togglePr" style="cursor:pointer;">
+          <text class="card-title">🏆 个人纪录 <text class="card-sub">各动作最高重量 {{prCollapsed ? '▼ 展开' : '▲ 收起'}}</text></text>
+        </view>
+        <view class="pr-item" wx:for="{{displayPrList}}" wx:key="name">
           <text class="{{item.tagClass}}">{{item.category[0]}}</text>
           <text class="pr-name">{{item.name}}</text>
           <text class="pr-weight">{{item.weight}}kg</text>
           <text class="text-muted">× {{item.reps}}</text>
           <text class="pr-date">{{item.date.slice(5)}}</text>
         </view>
+        <view wx:if="{{prList.length > 5}}" class="pr-toggle" bindtap="togglePr">
+          <text>{{prCollapsed ? '▼ 展开全部 (' + prList.length + '项)' : '▲ 收起'}}</text>
+        </view>
       </view>
 
       <!-- ⑤ 力量曲线 -->
-      <view class="card" wx:if="{{strengthLifts.length}}">
+      <view class="card" wx:if="{{strengthDisplayLifts.length}}">
         <text class="card-title">📈 力量趋势 <text class="card-sub">复合动作重量变化</text></text>
-        <view class="sc-lift" wx:for="{{strengthLifts}}" wx:key="name">
+        <view class="st-tabs">
+          <view class="st-tab {{strengthTab === 'Push' ? 'st-active' : ''}}" data-tab="Push" bindtap="onStrengthTabTap">推</view>
+          <view class="st-tab {{strengthTab === 'Pull' ? 'st-active' : ''}}" data-tab="Pull" bindtap="onStrengthTabTap">拉</view>
+          <view class="st-tab {{strengthTab === 'Legs' ? 'st-active' : ''}}" data-tab="Legs" bindtap="onStrengthTabTap">腿</view>
+        </view>
+        <view class="sc-lift" wx:for="{{strengthDisplayLifts}}" wx:key="name">
           <view class="sc-header">
             <text class="sc-name">{{item.name}}</text>
             <text class="sc-latest">最新 {{item.latest.weight}}kg × {{item.latest.reps}}</text>
           </view>
           <view class="sc-chart">
-            <view class="sc-bar-wrap" wx:for="{{item.bars}}" wx:key="date">
-              <view class="sc-bar" style="height:{{item.pct}}%">
-                <text class="sc-bar-val">{{item.weight}}</text>
+            <view class="sc-bar-wrap" wx:for="{{item.bars}}" wx:for-item="bar" wx:key="date">
+              <view class="sc-bar" style="height:{{bar.pct}}%;background:{{item.color}}">
+                <text class="sc-bar-val">{{bar.weight}}</text>
               </view>
             </view>
           </view>
           <view class="sc-labels">
-            <text class="sc-label" wx:for="{{item.bars}}" wx:key="date">{{item.date}}</text>
+            <text class="sc-label" wx:for="{{item.bars}}" wx:for-item="bar" wx:key="date">{{bar.date}}</text>
           </view>
         </view>
+      </view>
+      <!-- ⑤-2 力量趋势加载失败 -->
+      <view class="card" wx:if="{{!strengthLifts.length && strengthChartFailed}}" bindtap="retryStrengthChart" style="text-align:center;padding:30px 0;cursor:pointer;">
+        <text class="retry-text">📈 力量趋势加载失败</text>
+        <view class="retry-btn">点击重试</view>
       </view>
 
       <!-- ⑥ 周训练量 -->
@@ -141,7 +157,9 @@
           <text wx:for="{{['日','一','二','三','四','五','六']}}" wx:key="*this" class="cal-wd">{{item}}</text>
         </view>
         <view class="cal-grid">
-          <view wx:for="{{calGrid}}" wx:key="day" class="cal-cell {{item.empty ? 'cal-empty' : ''}} {{item.hasWorkout ? 'cal-done' : ''}} {{item.isToday ? 'cal-today' : ''}}">
+          <view wx:for="{{calGrid}}" wx:key="day"
+                class="cal-cell {{item.empty ? 'cal-empty' : ''}} {{item.hasWorkout ? 'cal-done' : ''}} {{item.isToday ? 'cal-today' : ''}} cal-{{item.wtype}}"
+                data-wid="{{item.wid}}" data-wtype="{{item.wtype}}" bindtap="onCalDayTap">
             <text wx:if="{{!item.empty}}">{{item.day}}</text>
           </view>
         </view>
@@ -156,6 +174,40 @@
             <text class="pie-name">{{item.type}}</text>
             <view class="pie-track"><view class="pie-fill" style="width:{{item.pct}}%; background:{{item.color}}"></view></view>
             <text class="pie-val">{{item.volK}}k ({{item.pct}}%)</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 动作详情弹窗 -->
+      <view class="ex-overlay" wx:if="{{showExDetail}}" catchtap="dismissExDetail">
+        <view class="ex-popup" catchtap="noop">
+          <text class="ex-popup-name">{{exDetailData && exDetailData.name}}</text>
+          <view class="ex-popup-section">
+            <text class="ex-popup-label">🎯 目标肌肉</text>
+            <text class="ex-popup-text">{{exDetailData && exDetailData.muscles}}</text>
+          </view>
+          <view class="ex-popup-section">
+            <text class="ex-popup-label">⚠️ 注意事项</text>
+            <text class="ex-popup-text">{{exDetailData && exDetailData.notes}}</text>
+          </view>
+          <text class="ex-popup-close" bindtap="dismissExDetail">关闭</text>
+        </view>
+      </view>
+
+      <!-- 日历弹窗 -->
+      <view class="cal-overlay" wx:if="{{calPopup}}" catchtap="dismissCalPopup">
+        <view class="cal-popup" catchtap="{{''}}">
+          <text class="cal-popup-title" wx:if="{{calPopupData}}">{{calPopupData.date}} · {{calPopupData.type}} · {{calPopupData.duration}}分</text>
+          <text class="cal-popup-title" wx:else>加载中...</text>
+          <view class="cal-popup-ex" wx:for="{{calPopupData && calPopupData.exercises || []}}" wx:key="exName">
+            <text class="ex-title">{{item.exName}}</text>
+            <view class="ex-sets">
+              <view class="set-detail" wx:for="{{item.sets}}" wx:key="id">
+                <text class="set-num">{{item.set_number}}</text>
+                <text class="set-val">{{item.weight_kg}}kg</text>
+                <text class="text-muted">× {{item.reps}}</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>

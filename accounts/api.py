@@ -43,6 +43,8 @@ def _adjust(row):
             row['max_weight'] = round(BODY_WEIGHT - row['max_weight'], 1)
         if 'avg_weight' in row and row['avg_weight']:
             row['avg_weight'] = round(BODY_WEIGHT - row['avg_weight'], 1)
+        if 'weight_kg' in row and row['weight_kg']:
+            row['weight_kg'] = round(BODY_WEIGHT - row['weight_kg'], 1)
     if row.get('exercise') in ASSISTED and 'weight_kg' in row and row['weight_kg']:
         row['weight_kg'] = round(BODY_WEIGHT - row['weight_kg'], 1)
     return row
@@ -130,14 +132,17 @@ def workout_detail(request, pk):
         data['sets'] = [_adjust(r) for r in (_parse_duckdb_table(raw) or [])] if raw else []
         return Response(data)
 
-    # PATCH — update duration / note
+    # PATCH — update duration / note / summary
     updates = []
     if 'duration_min' in request.data:
         val = request.data['duration_min']
-        updates.append(f"duration_min = {val}" if val else "duration_min = NULL")
+        updates.append(f"duration_min = {val}" if val is not None else "duration_min = NULL")
     if 'note' in request.data:
         n = request.data['note'].replace(chr(39), chr(39) + chr(39))
         updates.append(f"note = '{n}'" if n else "note = NULL")
+    if 'summary' in request.data:
+        s = request.data['summary'].replace(chr(39), chr(39) + chr(39))
+        updates.append(f"summary = '{s}'" if s else "summary = NULL")
 
     if not updates:
         return Response({'error': '没有可更新的字段'}, status=400)
@@ -151,7 +156,7 @@ def workout_detail(request, pk):
 @permission_classes([AllowAny])
 def workout_last(request):
     """Most recent workout with full set details."""
-    sql = f"SELECT id, date, type, duration_min, note FROM workouts WHERE owner = '{_owner(request)}' ORDER BY date DESC LIMIT 1"
+    sql = f"SELECT id, date, type, duration_min, note, summary FROM workouts WHERE owner = '{_owner(request)}' ORDER BY date DESC LIMIT 1"
     rows = _run_sql(sql)
     if not rows:
         return Response({'error': '尚无训练记录'}, status=404)
@@ -342,13 +347,13 @@ def stats_overview(request):
 
     # Last 5 sessions
     recent_sql = f"""\
-        SELECT w.id, w.date, w.type, w.duration_min,
+        SELECT w.id, w.date, w.type, w.duration_min, w.summary,
                COUNT(s.id) as sets,
                COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume
         FROM workouts w
         JOIN sets s ON w.id = s.workout_id
         WHERE w.owner = '{_owner(request)}'
-        GROUP BY w.id, w.date, w.type, w.duration_min
+        GROUP BY w.id, w.date, w.type, w.duration_min, w.summary
         ORDER BY w.date DESC
         LIMIT 5
     """

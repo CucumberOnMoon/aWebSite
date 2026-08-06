@@ -357,10 +357,12 @@ Page({
   formatLastWorkout(lw) {
     const exMap = {}
     for (const s of lw.sets) {
-      const en = s.exercise_cn || s.exercise || ''
-      if (!exMap[en]) exMap[en] = { exName: en, sets: [], minId: s.id }
-      exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
-      if (s.id < exMap[en].minId) exMap[en].minId = s.id
+      const en = s.exercise || ''
+      const cn = s.exercise_cn || ''
+      const key = en || cn
+      if (!exMap[key]) exMap[key] = { exName: cn || en, exercise: en, sets: [], minId: s.id }
+      exMap[key].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
+      if (s.id < exMap[key].minId) exMap[key].minId = s.id
     }
     const dur = lw.duration_min
     const durNum = (dur === 'NULL' || dur === null || dur === undefined) ? 0 : dur
@@ -528,14 +530,15 @@ Page({
   noop() {},
   async onExNameTap(e) {
     const name = e.currentTarget.dataset.exname
-    const info = EXERCISE_INFO[name]
+    const engName = e.currentTarget.dataset.engname || name
+    const info = EXERCISE_INFO[engName]
     if (!info) return
     let gifUrl = null
     try {
-      const res = await api.getExerciseGif(name)
+      const res = await api.getExerciseGif(engName)
       if (res && res.gif_url) gifUrl = res.gif_url
     } catch (_) {}
-    this.setData({ showExDetail: true, exDetailData: { name, imgName: name, gif_url: gifUrl, ...info } })
+    this.setData({ showExDetail: true, exDetailData: { name, imgName: engName, gif_url: gifUrl, ...info } })
   },
   dismissExDetail() {
     this.setData({ showExDetail: false, exDetailData: null })

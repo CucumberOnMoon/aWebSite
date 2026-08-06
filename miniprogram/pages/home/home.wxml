@@ -1,7 +1,15 @@
 <scroll-view scroll-y class="page">
   <!-- 用户选择器 -->
   <view class="user-picker">
-    <text class="user-label">查看用户</text>
+    <view class="user-picker-left">
+      <view class="timer-btn" bindtap="onTimerTap">
+        {{timerActive ? '⏳' : '⏰'}}
+      </view>
+      <text wx:if="{{timerActive}}" class="timer-display">{{timerRemaining}}秒</text>
+      <text wx:if="{{timerActive}}" class="timer-reset" bindtap="onTimerReset">✕</text>
+      <text class="user-label">查看用户</text>
+      <text class="version-label">v{{appVersion}}</text>
+    </view>
     <picker mode="selector" range="{{userList}}" bindchange="onUserChange">
       <view class="picker-box">
         <text class="picker-text">{{selectedUser || '选择用户'}}</text>
@@ -64,11 +72,16 @@
 
       <!-- ② 上次训练 -->
       <view class="card" wx:if="{{lastWorkout}}">
-        <text class="card-title">🕐 上次训练</text>
+        <view class="card-title-row">
+          <text class="card-title-prefix {{lastWorkoutOffset === 0 ? 'arrow-disabled' : ''}}" bindtap="onLastWorkoutPrev">‹</text>
+          <text class="card-title">🕐 上次训练 <text class="card-sub">第 {{lastWorkoutOffset + 1}} 次</text></text>
+          <text class="card-title-next {{lastWorkoutMore ? '' : 'arrow-disabled'}}" bindtap="onLastWorkoutNext">›</text>
+        </view>
+        <view class="last-workout-swipe" bindtouchstart="onLastWoTouchStart" bindtouchend="onLastWoTouchEnd">
         <text class="text-muted">{{lastWorkoutStr}}</text>
         <view class="last-workout">
           <view class="ex-group" wx:for="{{lastWorkout.exercises}}" wx:key="exName">
-            <text class="ex-title" bindtap="onExNameTap" data-exname="{{item.exName}}">{{item.exName}}</text>
+            <text class="ex-title" bindtap="onExNameTap" data-exname="{{item.exName}}" data-engname="{{item.exercise}}">{{item.exName}}</text>
             <view class="ex-sets">
               <view class="set-detail" wx:for="{{item.sets}}" wx:key="id">
                 <text class="set-num">{{item.set_number}}</text>
@@ -77,6 +90,7 @@
               </view>
             </view>
           </view>
+        </view>
         </view>
       </view>
 
@@ -152,7 +166,12 @@
 
       <!-- ⑦ 训练频率 -->
       <view class="card" wx:if="{{calGrid.length}}">
-        <text class="card-title">🗓️ 训练频率 <text class="card-sub">{{calMonths[0]}}</text></text>
+        <view class="card-title-row">
+          <text class="card-title-prefix" bindtap="onCalPrevMonth">‹</text>
+          <text class="card-title">🗓️ 训练频率 <text class="card-sub">{{calMonths[0]}}</text></text>
+          <text class="card-title-next" bindtap="onCalNextMonth">›</text>
+        </view>
+        <view class="cal-view" bindtouchstart="onCalTouchStart" bindtouchend="onCalTouchEnd">
         <view class="cal-weekdays">
           <text wx:for="{{['日','一','二','三','四','五','六']}}" wx:key="*this" class="cal-wd">{{item}}</text>
         </view>
@@ -162,6 +181,7 @@
                 data-wid="{{item.wid}}" data-wtype="{{item.wtype}}" bindtap="onCalDayTap">
             <text wx:if="{{!item.empty}}">{{item.day}}</text>
           </view>
+        </view>
         </view>
       </view>
 
@@ -182,16 +202,7 @@
       <view class="ex-overlay" wx:if="{{showExDetail}}" catchtap="dismissExDetail">
         <view class="ex-popup" catchtap="noop">
           <text class="ex-popup-name">{{exDetailData && exDetailData.name}}</text>
-          <view class="ex-muscle-imgs" wx:if="{{exDetailData}}">
-            <view class="ex-muscle-card">
-              <text class="ex-muscle-label">🔴 主动肌</text>
-              <image class="ex-muscle-img" src="/images/ex-muscles/{{exDetailData.name}}_主动肌.png" mode="aspectFit"/>
-            </view>
-            <view class="ex-muscle-card">
-              <text class="ex-muscle-label">🟡 协同肌</text>
-              <image class="ex-muscle-img" src="/images/ex-muscles/{{exDetailData.name}}_协同肌.png" mode="aspectFit"/>
-            </view>
-          </view>
+          <image class="ex-gif" wx:if="{{exDetailData && exDetailData.gif_url}}" src="{{exDetailData.gif_url}}" mode="aspectFit"/>
           <text class="ex-popup-label">🎯 目标肌肉</text>
           <text class="ex-popup-text">{{exDetailData && exDetailData.muscles}}</text>
           <text class="ex-popup-label" style="margin-top:10px">⚠️ 注意事项</text>

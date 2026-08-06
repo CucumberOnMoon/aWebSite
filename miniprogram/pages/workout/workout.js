@@ -83,7 +83,15 @@ Page({
       const todayType = WEEK_CYCLE[idx] || 'rest'
       const dayExs = (allExs || []).filter(e => (e.category || '').toLowerCase() === todayType)
 
-      const exOptions = dayExs.map(e => ({ id: e.id, name: e.name }))
+      const exOptions = []
+      const seenNames = new Set()
+      for (const e of dayExs) {
+        const displayName = e.name_cn || e.name
+        if (!seenNames.has(displayName)) {
+          seenNames.add(displayName)
+          exOptions.push({ id: e.id, name: displayName })
+        }
+      }
       const exLabels = exOptions.map(e => e.name)
 
       this.setData({

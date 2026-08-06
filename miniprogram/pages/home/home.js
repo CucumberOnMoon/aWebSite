@@ -531,8 +531,7 @@ Page({
   async onExNameTap(e) {
     const name = e.currentTarget.dataset.exname
     const engName = e.currentTarget.dataset.engname || name
-    const info = EXERCISE_INFO[engName]
-    if (!info) return
+    const info = EXERCISE_INFO[name] || {}
     let gifUrl = null
     try {
       const res = await api.getExerciseGif(engName)

@@ -1,0 +1,52 @@
+<view class="lib-page">
+  <view class="lib-loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <view class="lib-body" wx:else>
+    <!-- 固定头部 -->
+    <view class="lib-sticky">
+      <scroll-view class="lib-tabs" scroll-x enable-flex>
+        <view wx:for="{{CAT_KEYS}}" wx:key="this"
+              data-cat="{{item}}" bindtap="onCategoryTap"
+              style="flex:1;text-align:center;padding:8px 0;font-size:14px;font-weight:600;border-radius:8px;{{categoryTab === item ? 'background:#1f6feb;color:#fff' : 'background:transparent;color:#8b949e'}}">
+          <text>{{CATEGORY_LABELS[item]}}</text>
+        </view>
+      </scroll-view>
+
+      <picker class="lib-picker" mode="selector" range="{{muscleOptions}}" range-key="label"
+              value="{{muscleIdx}}" bindchange="onMuscleChange">
+        <view class="lib-picker-trigger">
+          <text>{{currentMuscleLabel}}</text>
+          <text class="lib-arrow">▾</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 可滚动列表 -->
+    <view class="lib-list" style="overflow-y:auto;overflow-x:hidden">
+      <view wx:for="{{filteredList}}" wx:key="id"
+            data-exname="{{item.name}}" bindtap="onExTap"
+            style="background:#21262d;border:1px solid #30363d;border-radius:10px;margin-bottom:8px;padding:12px 14px">
+        <view style="font-size:14px;font-weight:600;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">{{item.name_cn || item.name}}</view>
+        <view style="font-size:11px;color:#8b949e">{{MUSCLE_LABELS[item.target_muscle] || (item.target_muscle && item.target_muscle !== 'NULL' ? item.target_muscle : '未分类')}}</view>
+      </view>
+      <view class="lib-empty" wx:if="{{!filteredList.length}}">
+        <text>该分类下暂无动作</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 动作详情弹窗 -->
+  <view class="ex-overlay" wx:if="{{showExDetail}}" catchtap="dismissExDetail">
+    <view class="ex-popup" catchtap="noop">
+      <text class="ex-popup-name">{{(exDetailData && (exDetailData.name_cn || exDetailData.name)) || ''}}</text>
+      <image class="ex-gif" wx:if="{{exDetailData && exDetailData.gif_url}}" src="{{exDetailData.gif_url}}" mode="aspectFit"/>
+      <text class="ex-popup-label">🎯 目标肌肉</text>
+      <text class="ex-popup-text">{{(exDetailData && (exDetailData.muscles || (MUSCLE_LABELS[exDetailData.target_muscle] || exDetailData.target_muscle))) || '暂无数据'}}</text>
+      <text class="ex-popup-label" style="margin-top:10px" wx:if="{{exDetailData && exDetailData.notes}}">⚠️ 注意事项</text>
+      <text class="ex-popup-text" wx:if="{{exDetailData && exDetailData.notes}}">{{exDetailData.notes}}</text>
+      <text class="ex-popup-close" bindtap="dismissExDetail">关闭</text>
+    </view>
+  </view>
+</view>

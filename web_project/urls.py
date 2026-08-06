@@ -40,6 +40,8 @@ urlpatterns = [
     path('api/fitness/wechat/bind/', api.wechat_bind, name='wechat_bind'),
     path('api/fitness/wechat/create/', api.wechat_create, name='wechat_create'),
     path('api/fitness/wechat/unbound/', api.wechat_unbound, name='wechat_unbound'),
+    path('api/fitness/timer-notify/', api.timer_notify, name='timer_notify'),
+    path('api/fitness/exercise-gif/', api.exercise_gif, name='exercise_gif'),
 ]
 
 if settings.DEBUG:

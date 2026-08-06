@@ -65,12 +65,18 @@ function finishWorkout(workoutId, durationMin) {
   return request('PATCH', '/api/fitness/workouts/' + workoutId + '/', { duration_min: durationMin, owner: getCurrentUser() })
 }
 function getWorkouts(limit) { return request('GET', '/api/fitness/workouts/', { limit: limit || 20 }) }
-function getLastWorkout() { return request('GET', '/api/fitness/workouts/last/') }
+function getLastWorkout(offset) { return request('GET', '/api/fitness/workouts/last/', { offset: offset || 0 }) }
 function getSetHistory(exerciseId) {
   return request('GET', '/api/fitness/sets/history/', { exercise_id: exerciseId })
 }
 function getWorkoutSets(workoutId) {
   return request('GET', '/api/fitness/workouts/' + workoutId + '/')
+}
+function getExerciseGif(exerciseName) {
+  return request('GET', '/api/fitness/exercise-gif/', { name: exerciseName })
+}
+function timerNotify(minutes, owner) {
+  return request('POST', '/api/fitness/timer-notify/', { minutes, owner })
 }
 
 module.exports = {
@@ -78,5 +84,5 @@ module.exports = {
   getUsers, getUnbound, wechatLogin, wechatBind, wechatCreate,
   getStats, getExercises, getCycle,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
-  getSetHistory, getWorkoutSets
+  getSetHistory, getWorkoutSets, getExerciseGif, timerNotify
 }

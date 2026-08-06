@@ -155,17 +155,18 @@ def workout_detail(request, pk):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def workout_last(request):
-    """Most recent workout with full set details."""
-    sql = f"SELECT id, date, type, duration_min, note, summary FROM workouts WHERE owner = '{_owner(request)}' ORDER BY date DESC LIMIT 1"
+    """Most recent workout with full set details. Optional ?offset=N for Nth most recent."""
+    offset = int(request.query_params.get('offset', 0))
+    sql = f"SELECT id, date, type, duration_min, note, summary FROM workouts WHERE owner = '{_owner(request)}' ORDER BY date DESC LIMIT 1 OFFSET {offset}"
     rows = _run_sql(sql)
     if not rows:
-        return Response({'error': '尚无训练记录'}, status=404)
+        return Response({'error': '没有更多训练记录'}, status=404)
 
     data = rows[0]
     pk = data['id']
     sets_sql = f"""\
         SELECT s.id, s.set_number, s.weight_kg, s.reps, s.rpe,
-               e.id as exercise_id, e.name as exercise, e.category
+               e.id as exercise_id, e.name as exercise, e.name_cn as exercise_cn, e.category
         FROM sets s
         JOIN exercises e ON s.exercise_id = e.id
         WHERE s.workout_id = {pk} AND s.owner = '{_owner(request)}'
@@ -625,3 +626,77 @@ def wechat_unbound(request):
     if data is None:
         return Response({'error': '查询失败'}, status=500)
     return Response([row['owner'] for row in data])
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def exercise_gif(request):
+    """Return GIF URL for an exercise name."""
+    name = request.query_params.get('name', '')
+    if not name:
+        return Response({'error': 'name 必填'}, status=400)
+    safe = name.replace("'", "''")
+    rows = _run_sql(f"SELECT exercise_name, gif_path FROM exercise_gifs WHERE exercise_name = '{safe}'")
+    if not rows:
+        return Response({'gif_url': None})
+    path = rows[0]['gif_path']
+    # Convert file path to URL
+    filename = path.split('/')[-1]
+    return Response({'gif_url': f'https://avocadocloud.duckdns.org/images/ex-demos/all/{filename}'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def timer_notify(request):
+    """Send WeChat subscribe message when timer expires."""
+    owner = request.data.get('owner', '').replace("'", "''")
+    minutes = request.data.get('minutes', 0)
+
+    if not owner:
+        return Response({'error': 'owner 必填'}, status=400)
+
+    # Look up openid
+    rows = _run_sql(f"SELECT openid FROM wechat_binds WHERE username = '{owner}'")
+    if not rows:
+        return Response({'error': '未找到微信绑定'}, status=404)
+    openid = rows[0]['openid']
+
+    # Get access_token
+    appid = settings.WX_APPID
+    secret = settings.WX_APPSECRET
+    token_url = f"https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={appid}&secret={secret}"
+    try:
+        req = urllib.request.Request(token_url)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            token_data = json.loads(resp.read())
+        token = token_data.get('access_token')
+        if not token:
+            return Response({'error': '获取token失败', 'detail': token_data}, status=502)
+    except Exception as e:
+        return Response({'error': 'token请求失败'}, status=502)
+
+    # Send subscribe message
+    from datetime import datetime, timedelta
+    end_time = (datetime.now() + timedelta(minutes=minutes)).strftime('%H:%M')
+    tmpl_id = 'lsf68_WyUqKrYTi1UhwPpcmbpBjsUZ69EX7-Maw-Tw0'
+    send_url = f"https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token={token}"
+    body = {
+        'touser': openid,
+        'template_id': tmpl_id,
+        'data': {
+            'thing7': {'value': '组间休息'},
+            'time2': {'value': end_time},
+        },
+        'page': 'pages/home/home',
+    }
+    try:
+        req2 = urllib.request.Request(send_url, data=json.dumps(body).encode(), method='POST')
+        req2.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req2, timeout=10) as resp2:
+            result = json.loads(resp2.read())
+        if result.get('errcode', -1) == 0:
+            return Response({'status': 'sent'})
+        else:
+            return Response({'status': 'failed', 'detail': result}, status=502)
+    except Exception as e:
+        return Response({'error': '发送通知失败'}, status=502)

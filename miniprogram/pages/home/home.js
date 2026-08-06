@@ -1,101 +1,10 @@
 const api = require('../../utils/api')
+const { EXERCISE_INFO } = require('../../utils/exercises')
 
 const CAT_COLORS = { Push: '#f85149', Pull: '#d29922', Legs: '#3fb950' }
 const EX_COLORS = ['#58a6ff', '#bc8cff', '#39d2c0', '#f5c342', '#f85149', '#3fb950', '#d29922', '#1f6feb', '#da3633', '#238636']
 
 const COMPOUND_NAMES = ['杠铃深蹲', '杠铃卧推', '罗马尼亚硬拉', '硬拉', '助力引体向上', '高位下拉', '低位划船']
-
-// ── 动作知识库 ──
-const EXERCISE_INFO = {
-  '杠铃卧推': {
-    muscles: '胸大肌（整体）· 三角肌前束 · 肱三头肌',
-    notes: '肩胛骨全程收紧贴凳 · 杠铃触胸即起 · 手腕中立不后翻 · 脚踩实地面'
-  },
-  '哑铃上斜卧推': {
-    muscles: '胸大肌（上胸）· 三角肌前束 · 肱三头肌',
-    notes: '凳角30-45° · 哑铃下落至大小臂90° · 顶点挤压胸 · 肘不过度外展'
-  },
-  '侧平举': {
-    muscles: '三角肌（中束为主）· 冈上肌',
-    notes: '身体微前倾稳住肩胛 · 肘微屈固定角度 · 手不高于肘 · 不要借力甩'
-  },
-  '绳索下压': {
-    muscles: '肱三头肌（外侧头+长头）',
-    notes: '大臂贴肋不动 · 下压至手臂伸直 · 缓慢回放控制 · 身体勿前后晃'
-  },
-  '双杠臂屈伸(助力)': {
-    muscles: '胸大肌（下胸）· 肱三头肌 · 三角肌前束',
-    notes: '含胸微前倾练胸 · 直身上下练三头 · 下落勿过低伤肩 · 肘不内夹'
-  },
-  '俯卧撑': {
-    muscles: '胸大肌 · 三角肌前束 · 肱三头肌 · 核心',
-    notes: '身体成直线不塌腰 · 手略宽于肩 · 下落至胸触地 · 肘45°夹'
-  },
-  '高位下拉': {
-    muscles: '背阔肌（宽度）· 肱二头肌 · 大圆肌',
-    notes: '肩胛下沉启动 · 拉至锁骨位 · 肘垂直向下画弧 · 躯干微后倾不动晃'
-  },
-  '低位划船': {
-    muscles: '背阔肌（厚度）· 菱形肌 · 斜方肌中束 · 肱二头肌',
-    notes: '肩胛后缩启动 · 拉至腹部 · 肘贴肋向后 · 顶峰夹背1秒'
-  },
-  '面拉': {
-    muscles: '三角肌后束 · 冈下肌 · 小圆肌 · 菱形肌',
-    notes: '拉至眼前方 · 肘高过腕 · 末端外旋肩 · 轻重量高次数'
-  },
-  '哑铃弯举': {
-    muscles: '肱二头肌（长头+短头）· 肱肌',
-    notes: '大臂贴肋不动 · 腕中立 · 全幅度伸到底 · 勿甩腰借力'
-  },
-  '直臂下压': {
-    muscles: '背阔肌（下背）· 大圆肌 · 胸大肌下束（辅助）',
-    notes: '肘微屈固定角度 · 身体微前倾 · 下压至大腿侧 · 放回可控'
-  },
-  '反向蝴蝶机': {
-    muscles: '三角肌后束 · 冈下肌 · 小圆肌 · 菱形肌',
-    notes: '肩胛打开前伸 · 后拉至与肩平 · 肘微屈 · 勿用背夹代偿'
-  },
-  '杠铃深蹲': {
-    muscles: '股四头肌 · 臀大肌 · 腘绳肌 · 竖脊肌 · 核心',
-    notes: '杠铃高杠位 · 膝随脚尖方向 · 核心绷紧不松 · 大腿与地面平行或更低 · 踝活动度不够可垫片'
-  },
-  '腿屈伸': {
-    muscles: '股四头肌（整体，重点股内侧肌）',
-    notes: '坐垫调整使膝对准转轴 · 全幅度慢放 · 顶峰挤压 · 勿甩腿借力'
-  },
-  '保加利亚分腿蹲': {
-    muscles: '股四头肌 · 臀大肌 · 腘绳肌 · 核心',
-    notes: '后脚垫高 · 躯干微前倾 · 前膝不超脚尖 · 后膝接近地面 · 单边完成再换'
-  },
-  '腿弯举': {
-    muscles: '腘绳肌（股二头肌）· 腓肠肌',
-    notes: '髋贴紧凳面 · 全幅度慢放 · 顶峰挤压 · 勿用爆发力甩'
-  },
-  '提踵': {
-    muscles: '腓肠肌 · 比目鱼肌',
-    notes: '站姿练腓肠肌 · 坐姿练比目鱼肌 · 全幅度 · 顶峰挤压2秒 · 高次数'
-  },
-  '相扑深蹲': {
-    muscles: '大腿内收肌 · 臀大肌 · 股四头肌',
-    notes: '站距宽于肩 · 脚尖外展45° · 膝随脚尖方向 · 上身直立 · 蹲到底'
-  },
-  '负重臀推': {
-    muscles: '臀大肌（主打）· 腘绳肌 · 核心',
-    notes: '肩胛骨靠凳 · 髋顶至肩-膝成直线 · 顶峰挤压 · 下放不碰地'
-  },
-  '助力引体向上': {
-    muscles: '背阔肌 · 肱二头肌 · 大圆肌 · 斜方肌',
-    notes: '宽握练宽度 · 反握练二头 · 下放到底 · 肩胛主动收紧'
-  },
-  '罗马尼亚硬拉': {
-    muscles: '腘绳肌 · 臀大肌 · 竖脊肌 · 核心',
-    notes: '髋向后推启动 · 膝微屈固定 · 杠铃贴腿下放至小腿中 · 腘绳感为主 · 勿弓腰'
-  },
-  '硬拉': {
-    muscles: '全身后侧链：腘绳肌 · 臀大肌 · 竖脊肌 · 背阔肌 · 前臂',
-    notes: '杠铃贴胫骨 · 背收紧挺胸 · 髋和肩同步起 · 勿弓腰 · 全程核心绷紧'
-  },
-}
 
 Page({
   data: {
@@ -116,19 +25,31 @@ Page({
     catBars: [],
     lastWorkout: null,
     lastWorkoutStr: '',
+    lastWorkoutOffset: 0,
+    lastWorkoutMore: true,
     showExDetail: false,
     exDetailData: null,
     highlights: [],
     strengthChartFailed: false,
     prCollapsed: true,
     calPopup: null, calPopupData: null,
+    calYear: 0, calMonth: 0,
     strengthTab: 'Push',
+    appVersion: '1.8.1',
+    // Timer
+    timerActive: false,
+    timerRemaining: 0,
+    timerEnd: 0,
   },
 
   async onShow() {
     // 每次打开都调微信登录
     this.loadUsers()
     this.setData({ loading: true })
+
+    // Check if timer expired while we were away
+    this.checkTimerExpired()
+
     try {
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)
@@ -200,7 +121,8 @@ Page({
       const strengthLifts = this.buildStrengthLifts(compoundData)
       const strengthDisplayLifts = this.getStrengthByTab(strengthLifts, 'Push')
       const weeklyVolumes = this.buildWeeklyVolumes(allWorkouts)
-      const calData = this.buildCalendar(allWorkouts)
+      const now = new Date()
+      const calData = this.buildCalendar(allWorkouts, now.getFullYear(), now.getMonth())
 
       const byType = stats.by_type || []
       const maxCat = Math.max(...byType.map(t => t.volume || 0), 1)
@@ -212,31 +134,29 @@ Page({
       let lastWorkout = null
       let lastWorkoutStr = ''
       try {
-        const lw = await api.getLastWorkout()
+        const lw = await api.getLastWorkout(0)
         if (lw && lw.sets) {
-          const exMap = {}
-          for (const s of lw.sets) {
-            const en = s.exercise || ''
-            if (!exMap[en]) exMap[en] = { exName: en, sets: [], minId: s.id }
-            exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
-            if (s.id < exMap[en].minId) exMap[en].minId = s.id
-          }
-          const dur = lw.duration_min
-          const durNum = (dur === 'NULL' || dur === null || dur === undefined) ? 0 : dur
-          const exercises = Object.values(exMap).sort((a, b) => a.minId - b.minId)
-          lastWorkout = { date: lw.date, type: lw.type || '', duration: durNum, exercises }
-          lastWorkoutStr = lw.date + ' · ' + (lw.type || '') + ' · ' + durNum + '分'
+          const formatted = this.formatLastWorkout(lw)
+          lastWorkout = formatted.data
+          lastWorkoutStr = formatted.str
         }
       } catch (_) {}
 
       const highlights = this.computeHighlights(stats.recent || [], weeklyVolumes)
+
+      // Init cache with offset 0 workout
+      if (lastWorkout) {
+        this._workoutCache = { 0: { data: lastWorkout, str: lastWorkoutStr } }
+      }
 
       hasData = true
       this.setData({
         loading: false, hasData: true,
         totals, prList, displayPrList, strengthLifts, strengthDisplayLifts, weeklyVolumes,
         calGrid: calData.grid, calMonths: calData.months,
+        calYear: calData.year, calMonth: calData.month,
         catBars, lastWorkout, lastWorkoutStr, highlights,
+        lastWorkoutOffset: 0, lastWorkoutMore: true,
         strengthChartFailed: !strengthLifts.length && this._compoundFetchFailed,
       })
     } catch (e) {
@@ -374,13 +294,17 @@ Page({
     }))
   },
 
-  buildCalendar(workouts) {
+  buildCalendar(workouts, year, month) {
     const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const todayLocal = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
+    const todayLocal = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
     const workoutByDate = {}
-    for (const w of workouts) workoutByDate[w.date] = w
+    if (workouts) {
+      for (const w of workouts) workoutByDate[w.date] = w
+    } else {
+      workouts = this._allWorkouts || []
+      for (const w of workouts) workoutByDate[w.date] = w
+    }
+    this._allWorkouts = workouts
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const firstDay = new Date(year, month, 1).getDay()
     const monthLabel = year + '年' + (month + 1) + '月'
@@ -397,7 +321,101 @@ Page({
         wid: w ? w.id : null,
       })
     }
-    return { grid, months: [monthLabel] }
+    return { grid, months: [monthLabel], year, month }
+  },
+
+  onCalPrevMonth() {
+    let y = this.data.calYear, m = this.data.calMonth
+    m--
+    if (m < 0) { m = 11; y-- }
+    const calData = this.buildCalendar(null, y, m)
+    this.setData({ calGrid: calData.grid, calMonths: calData.months, calYear: calData.year, calMonth: calData.month })
+  },
+
+  onCalNextMonth() {
+    let y = this.data.calYear, m = this.data.calMonth
+    m++
+    if (m > 11) { m = 0; y++ }
+    const calData = this.buildCalendar(null, y, m)
+    this.setData({ calGrid: calData.grid, calMonths: calData.months, calYear: calData.year, calMonth: calData.month })
+  },
+
+  // Calendar touch swipe
+  _calTouchX: 0,
+  onCalTouchStart(e) {
+    this._calTouchX = e.touches[0].clientX
+  },
+  onCalTouchEnd(e) {
+    const dx = e.changedTouches[0].clientX - (this._calTouchX || 0)
+    if (Math.abs(dx) > 50) {
+      if (dx > 0) this.onCalPrevMonth()
+      else this.onCalNextMonth()
+    }
+  },
+
+  // ── 上次训练滑动 ──────────────────────────
+  formatLastWorkout(lw) {
+    const exMap = {}
+    for (const s of lw.sets) {
+      const en = s.exercise_cn || s.exercise || ''
+      if (!exMap[en]) exMap[en] = { exName: en, sets: [], minId: s.id }
+      exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
+      if (s.id < exMap[en].minId) exMap[en].minId = s.id
+    }
+    const dur = lw.duration_min
+    const durNum = (dur === 'NULL' || dur === null || dur === undefined) ? 0 : dur
+    const exercises = Object.values(exMap).sort((a, b) => a.minId - b.minId)
+    const data = { date: lw.date, type: lw.type || '', duration: durNum, exercises }
+    const str = lw.date + ' · ' + (lw.type || '') + ' · ' + durNum + '分'
+    return { data, str }
+  },
+
+  _workoutCache: {},
+  onLastWorkoutPrev() {
+    if (this.data.lastWorkoutOffset > 0) {
+      this.goToWorkout(this.data.lastWorkoutOffset - 1)
+    }
+  },
+  onLastWorkoutNext() {
+    if (this.data.lastWorkoutMore) {
+      this.goToWorkout(this.data.lastWorkoutOffset + 1)
+    }
+  },
+
+  async goToWorkout(offset) {
+    let cached = this._workoutCache[offset]
+    if (!cached) {
+      try {
+        const lw = await api.getLastWorkout(offset)
+        if (lw && lw.sets) {
+          cached = this.formatLastWorkout(lw)
+          this._workoutCache[offset] = cached
+        }
+      } catch (_) {
+        if (offset > 0) this.setData({ lastWorkoutMore: false })
+        return
+      }
+    }
+    if (cached) {
+      this.setData({
+        lastWorkoutOffset: offset,
+        lastWorkout: cached.data,
+        lastWorkoutStr: cached.str,
+        lastWorkoutMore: true
+      })
+    }
+  },
+
+  _lastWoTouchX: 0,
+  onLastWoTouchStart(e) {
+    this._lastWoTouchX = e.touches[0].clientX
+  },
+  onLastWoTouchEnd(e) {
+    const dx = e.changedTouches[0].clientX - (this._lastWoTouchX || 0)
+    if (Math.abs(dx) > 50) {
+      if (dx > 0) this.onLastWorkoutPrev()
+      else this.onLastWorkoutNext()
+    }
   },
 
   computeHighlights(workouts, weekly) {
@@ -422,6 +440,14 @@ Page({
       }
     }
     return h
+  },
+
+  // ── 分享 ──────────────────────────────
+  onShareAppMessage() {
+    return {
+      title: '有没有你 - 健身训练记录',
+      path: '/pages/home/home',
+    }
   },
 
   // ── 用户绑定 ─────────────────────────────
@@ -500,11 +526,16 @@ Page({
 
   // ── 动作详情弹窗 ─────────────────────────
   noop() {},
-  onExNameTap(e) {
+  async onExNameTap(e) {
     const name = e.currentTarget.dataset.exname
     const info = EXERCISE_INFO[name]
-    if (!info) return  // 没有知识库的动作不弹
-    this.setData({ showExDetail: true, exDetailData: { name, ...info } })
+    if (!info) return
+    let gifUrl = null
+    try {
+      const res = await api.getExerciseGif(name)
+      if (res && res.gif_url) gifUrl = res.gif_url
+    } catch (_) {}
+    this.setData({ showExDetail: true, exDetailData: { name, imgName: name, gif_url: gifUrl, ...info } })
   },
   dismissExDetail() {
     this.setData({ showExDetail: false, exDetailData: null })
@@ -551,5 +582,207 @@ Page({
 
   dismissCalPopup() {
     this.setData({ calPopup: null, calPopupData: null })
+  },
+
+  // ── 倒计时 ──────────────────────────────
+  TIMER_OPTIONS: [1, 2, 3, 5, 10, 15, 20, 30, 45, 60],
+
+  onTimerTap() {
+    var self = this
+    wx.showActionSheet({
+      itemList: ['1分钟','2分钟','3分钟','5分钟','10分钟','15分钟','20分钟','30分钟','45分钟','60分钟','自定义...'],
+      success: function(res) {
+        var mins = [1,2,3,5,10,15,20,30,45,60]
+        if (res.tapIndex < mins.length) {
+          self.startTimer(mins[res.tapIndex])
+        } else if (res.tapIndex === mins.length) {
+          wx.showModal({
+            title: '自定义倒计时',
+            editable: true,
+            placeholderText: '输入分钟数',
+            success: function(r) {
+              if (r.confirm && r.content) {
+                var n = parseInt(r.content)
+                if (n > 0 && n <= 120) self.startTimer(n)
+                else wx.showToast({ title: '请输入1-120的整数', icon: 'none' })
+              }
+            }
+          })
+        }
+      },
+      fail: function() {
+        wx.showModal({
+          title: '选择倒计时',
+          editable: true,
+          placeholderText: '输入分钟数',
+          success: function(r) {
+            if (r.confirm && r.content) {
+              var n = parseInt(r.content)
+              if (n > 0 && n <= 120) self.startTimer(n)
+              else wx.showToast({ title: '请输入1-120的整数', icon: 'none' })
+            }
+          }
+        })
+      }
+    })
+  },
+
+  startTimer(minutes) {
+    var self = this
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval)
+    }
+    // Stop any prior background audio
+    try {
+      if (self._bgAudio) self._bgAudio.stop()
+    } catch(_) {}
+
+    // Request subscribe permission (only prompts first time)
+    wx.requestSubscribeMessage({
+      tmplIds: ['lsf68_WyUqKrYTi1UhwPpcmbpBjsUZ69EX7-Maw-Tw0'],
+      success: function() {},
+      fail: function() {},
+      complete: function() {
+        // Start timer regardless of subscription result
+        self._doStartTimer(minutes)
+      }
+    })
+  },
+
+  _doStartTimer(minutes) {
+    var self = this
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval)
+    }
+    // Stop any prior background audio
+    try {
+      if (self._bgAudio) self._bgAudio.stop()
+    } catch(_) {}
+
+    var now = Date.now()
+    var end = now + minutes * 60 * 1000
+    this.setData({
+      timerActive: true,
+      timerRemaining: minutes * 60,
+      timerEnd: end,
+    })
+    // Save end time for onShow check (in case app was killed)
+    this._timerEndTime = end
+    this._timerMinutes = minutes
+
+    // Start silent background audio to keep JS alive when screen off
+    try {
+      var bg = wx.getBackgroundAudioManager()
+      bg.title = '倒计时'
+      bg.epname = '训练倒计时'
+      bg.singer = '嘿姆嘿姆'
+      bg.src = 'https://avocadocloud.duckdns.org/static/sounds/silent.mp3'
+      bg.play()
+      self._bgAudio = bg
+      // Loop: restart when ended
+      bg.onEnded(function() {
+        if (self._timerInterval) {
+          try { bg.src = 'https://avocadocloud.duckdns.org/static/sounds/silent.mp3'; bg.play() } catch(_) {}
+        }
+      })
+    } catch(e) {
+      console.log('bgAudio init failed:', e)
+    }
+
+    // Tick every second
+    this._timerInterval = setInterval(function() {
+      var remaining = Math.max(0, Math.round((end - Date.now()) / 1000))
+      if (remaining <= 0) {
+        clearInterval(self._timerInterval)
+        self._timerInterval = null
+        self.setData({ timerActive: false, timerRemaining: 0 })
+        self._timerEndTime = 0
+        // Play alarm on loop (audible if phone not silent)
+        try {
+          if (self._bgAudio) {
+            self._bgAudio.stop()
+            self._bgAudio.src = 'https://avocadocloud.duckdns.org/static/sounds/notice.mp3'
+            self._bgAudio.loop = true
+            self._bgAudio.play()
+          }
+        } catch(_) {}
+        // Try vibration + modal (works if app is in foreground)
+        wx.vibrateLong({ fail: function() {} })
+        // Send WeChat notification (works even if screen off)
+        try {
+          var owner = api.getCurrentUser() || 'howard'
+          api.timerNotify(minutes, owner).catch(function() {})
+        } catch(_) {}
+        wx.showModal({
+          title: '⏰ 倒计时结束',
+          content: minutes + '分钟计时已到！',
+          showCancel: false,
+          success: function() {
+            // User saw it, stop alarm
+            try { if (self._bgAudio) { self._bgAudio.stop(); self._bgAudio = null } } catch(_) {}
+          }
+        })
+        return
+      }
+      if (remaining % 5 === 0 || remaining <= 10) {
+        self.setData({ timerRemaining: remaining })
+      }
+    }, 1000)
+    wx.showToast({ title: '倒计时 ' + minutes + ' 分钟', icon: 'none', duration: 1500 })
+  },
+
+  onTimerReset() {
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval)
+      this._timerInterval = null
+    }
+    try {
+      if (this._bgAudio) {
+        this._bgAudio.stop()
+        this._bgAudio = null
+      }
+    } catch(_) {}
+    this._timerEndTime = 0
+    this.setData({ timerActive: false, timerRemaining: 0 })
+  },
+
+  // Check when returning to page if timer expired in background
+  checkTimerExpired() {
+    if (!this._timerEndTime) return
+    if (Date.now() >= this._timerEndTime) {
+      // Timer expired while we were away
+      var mins = this._timerMinutes || 0
+      this._timerEndTime = 0
+      if (this._timerInterval) {
+        clearInterval(this._timerInterval)
+        this._timerInterval = null
+      }
+      this.setData({ timerActive: false, timerRemaining: 0 })
+      // Stop silent audio
+      try {
+        if (this._bgAudio) {
+          this._bgAudio.stop()
+          this._bgAudio.src = 'https://avocadocloud.duckdns.org/static/sounds/notice.mp3'
+          this._bgAudio.loop = true
+          this._bgAudio.play()
+        }
+      } catch(_) {}
+      // Vibrate + notify (foreground now, so this works!)
+      var self = this
+      wx.vibrateLong({ fail: function() {} })
+      // Send WeChat notification (may have been missed in background)
+      try {
+        var owner = api.getCurrentUser() || 'howard'
+        api.timerNotify(mins, owner).catch(function() {})
+      } catch(_) {}
+      wx.showModal({
+        title: '⏰ 倒计时结束',
+        content: mins + '分钟计时已到！',
+        showCancel: false,
+        success: function() {
+          try { if (self._bgAudio) { self._bgAudio.stop(); self._bgAudio = null } } catch(_) {}
+        }
+      })
+    }
   },
 })

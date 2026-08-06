@@ -2,13 +2,8 @@
   <!-- 用户选择器 -->
   <view class="user-picker">
     <view class="user-picker-left">
-      <view class="timer-btn" bindtap="onTimerTap">
-        {{timerActive ? '⏳' : '⏰'}}
-      </view>
-      <text wx:if="{{timerActive}}" class="timer-display">{{timerRemaining}}秒</text>
-      <text wx:if="{{timerActive}}" class="timer-reset" bindtap="onTimerReset">✕</text>
       <text class="user-label">查看用户</text>
-      <text class="version-label">v{{appVersion}}</text>
+      <text class="version-label">v1.9.9</text>
     </view>
     <picker mode="selector" range="{{userList}}" bindchange="onUserChange">
       <view class="picker-box">

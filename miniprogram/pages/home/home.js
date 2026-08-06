@@ -534,7 +534,8 @@ Page({
     const info = EXERCISE_INFO[name] || {}
     let gifUrl = null
     try {
-      const res = await api.getExerciseGif(engName)
+      let res = await api.getExerciseGif(engName)
+      if (!res || !res.gif_url) res = await api.getExerciseGif(name)
       if (res && res.gif_url) gifUrl = res.gif_url
     } catch (_) {}
     this.setData({ showExDetail: true, exDetailData: { name, imgName: engName, gif_url: gifUrl, ...info } })

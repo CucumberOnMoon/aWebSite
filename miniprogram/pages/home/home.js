@@ -36,7 +36,7 @@ Page({
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '1.9.6',
+    appVersion: '1.9.7',
     // Timer
     timerActive: false,
     timerRemaining: 0,

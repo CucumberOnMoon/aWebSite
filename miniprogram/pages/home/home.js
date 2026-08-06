@@ -114,7 +114,7 @@ Page({
 
       const prs = (stats.prs || []).filter(p => p.weight_kg > 0)
       const prList = prs.map(p => ({
-        name: p.name, weight: p.weight_kg, reps: p.reps, date: p.date,
+        name: p.name_cn || p.name, weight: p.weight_kg, reps: p.reps, date: p.date,
         category: p.category, tagClass: 'tag ' + (p.category || '').toLowerCase()
       }))
       const displayPrList = prList.slice(0, 5)

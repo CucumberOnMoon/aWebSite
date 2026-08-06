@@ -329,7 +329,7 @@ def stats_overview(request):
 
     # By exercise
     ex_sql = f"""\
-        SELECT e.name, e.category,
+        SELECT e.name, e.name_cn, e.category,
                COUNT(DISTINCT w.id) as sessions,
                COUNT(s.id) as total_sets,
                ROUND(AVG(s.weight_kg), 1) as avg_weight,
@@ -363,7 +363,7 @@ def stats_overview(request):
     # Latest set per exercise
     owner = _owner(request)
     latest_sql = f"""\
-        SELECT e.name, e.category, s.weight_kg, s.reps, w.date
+        SELECT e.name, e.name_cn, e.category, s.weight_kg, s.reps, w.date
         FROM sets s
         JOIN workouts w ON s.workout_id = w.id
         JOIN exercises e ON s.exercise_id = e.id
@@ -382,7 +382,7 @@ def stats_overview(request):
 
     # ── Personal Records ──
     pr_sql = f"""\
-        SELECT e.name, e.category, s.weight_kg, s.reps, w.date
+        SELECT e.name, e.name_cn, e.category, s.weight_kg, s.reps, w.date
         FROM sets s
         JOIN workouts w ON s.workout_id = w.id
         JOIN exercises e ON s.exercise_id = e.id

@@ -122,7 +122,7 @@ def workout_detail(request, pk):
         data = workout[0]
         sets_sql = f"""\
             SELECT s.id, s.set_number, s.weight_kg, s.reps, s.rpe,
-                   e.id as exercise_id, e.name as exercise, e.category
+                   e.id as exercise_id, e.name as exercise, e.name_cn as exercise_cn, e.category
             FROM sets s
             JOIN exercises e ON s.exercise_id = e.id
             WHERE s.workout_id = {pk} AND s.owner = '{_owner(request)}'

@@ -39,9 +39,11 @@ Page({
         const exMap = {}
         for (const s of data.sets) {
           const en = s.exercise || ''
-          if (!exMap[en]) exMap[en] = { exName: en, sets: [], minId: s.id }
-          exMap[en].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
-          if (s.id < exMap[en].minId) exMap[en].minId = s.id
+          const cn = s.exercise_cn || ''
+          const key = en || cn
+          if (!exMap[key]) exMap[key] = { exName: cn || en, exercise: en, sets: [], minId: s.id }
+          exMap[key].sets.push({ id: s.id, set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps })
+          if (s.id < exMap[key].minId) exMap[key].minId = s.id
         }
         const exercises = Object.values(exMap).sort((a, b) => a.minId - b.minId)
         this.setData({ calPopupData: {

@@ -113,8 +113,10 @@ Page({
       const exMap = {}
       for (const s of allSets || []) {
         const ename = s.exercise || s.name || ''
+        const cname = s.exercise_cn || ''
+        const displayName = cname || ename
         if (!exMap[ename]) {
-          exMap[ename] = { name: ename, sets: [] }
+          exMap[ename] = { name: displayName, sets: [] }
           groups.push(exMap[ename])
         }
         exMap[ename].sets.push({

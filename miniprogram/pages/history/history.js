@@ -1,4 +1,5 @@
 const api = require('../../utils/api')
+const TYPE_CN = { Push: '推', Pull: '拉', Legs: '腿' }
 
 Page({
   data: {
@@ -18,7 +19,8 @@ Page({
       const list = (raw || []).map(w => ({
         id: w.id, date: w.date || '',
         type: (w.type || '').toLowerCase(),
-        typeLabel: ((w.type || '')[0] || ''),
+        typeLabel: TYPE_CN[w.type] || w.type || '',
+        typeCn: TYPE_CN[w.type] || w.type || '',
         duration: w.duration_min ? w.duration_min + '分钟' : '-',
         sets: w.sets || 0, volume: w.total_volume || 0
       }))
@@ -47,7 +49,7 @@ Page({
         }
         const exercises = Object.values(exMap).sort((a, b) => a.minId - b.minId)
         this.setData({ calPopupData: {
-          date: data.date, type: data.type, duration: data.duration_min,
+          date: data.date, type: TYPE_CN[data.type] || data.type, duration: data.duration_min,
           exercises
         }})
       }

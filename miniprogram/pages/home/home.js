@@ -2,6 +2,7 @@ const api = require('../../utils/api')
 const { EXERCISE_INFO } = require('../../utils/exercises')
 
 const CAT_COLORS = { Push: '#f85149', Pull: '#d29922', Legs: '#3fb950' }
+const TYPE_CN = { Push: '推', Pull: '拉', Legs: '腿' }
 const EX_COLORS = ['#58a6ff', '#bc8cff', '#39d2c0', '#f5c342', '#f85149', '#3fb950', '#d29922', '#1f6feb', '#da3633', '#238636']
 
 const COMPOUND_NAMES = ['杠铃深蹲', '杠铃卧推', '罗马尼亚硬拉', '硬拉', '助力引体向上', '高位下拉', '低位划船']
@@ -127,7 +128,7 @@ Page({
       const byType = stats.by_type || []
       const maxCat = Math.max(...byType.map(t => t.volume || 0), 1)
       const catBars = byType.map(t => ({
-        type: t.type, color: CAT_COLORS[t.type] || '#58a6ff',
+        type: t.type, typeCn: TYPE_CN[t.type] || t.type, color: CAT_COLORS[t.type] || '#58a6ff',
         volK: (t.volume / 1000).toFixed(0), pct: (t.volume / maxCat * 100).toFixed(0)
       }))
 
@@ -367,8 +368,8 @@ Page({
     const dur = lw.duration_min
     const durNum = (dur === 'NULL' || dur === null || dur === undefined) ? 0 : dur
     const exercises = Object.values(exMap).sort((a, b) => a.minId - b.minId)
-    const data = { date: lw.date, type: lw.type || '', duration: durNum, exercises }
-    const str = lw.date + ' · ' + (lw.type || '') + ' · ' + durNum + '分'
+    const data = { date: lw.date, type: TYPE_CN[lw.type] || lw.type || '', duration: durNum, exercises }
+    const str = lw.date + ' · ' + (TYPE_CN[lw.type] || lw.type || '') + ' · ' + durNum + '分'
     return { data, str }
   },
 
@@ -424,7 +425,7 @@ Page({
     const h = []
     // 如果最近训练有summary，直接用它
     if (workouts && workouts.length && workouts[0].summary) {
-      h.push({ type: 'summary', text: workouts[0].summary })
+      h.push({ type: 'summary', text: workouts[0].summary.replace(/\\n/g, '\n') })
       return h
     }
     // 无summary时走旧逻辑
@@ -576,7 +577,7 @@ Page({
         }
         const exercises = Object.values(exMap).sort((a, b) => a.minId - b.minId)
         this.setData({ calPopupData: {
-          date: data.date, type: data.type, duration: data.duration_min,
+          date: data.date, type: TYPE_CN[data.type] || data.type, duration: data.duration_min,
           exercises
         }})
       }

@@ -191,7 +191,7 @@
         <view class="pie-legend">
           <view class="pie-item" wx:for="{{catBars}}" wx:key="type">
             <view class="pie-color" style="background:{{item.color}}"></view>
-            <text class="pie-name">{{item.type}}</text>
+            <text class="pie-name">{{item.typeCn}}</text>
             <view class="pie-track"><view class="pie-fill" style="width:{{item.pct}}%; background:{{item.color}}"></view></view>
             <text class="pie-val">{{item.volK}}k ({{item.pct}}%)</text>
           </view>

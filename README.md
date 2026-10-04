@@ -38,7 +38,8 @@ miniprogram/images/ex-demos/  小程序动作 GIF（1079 个，约 103 MB）
 ### 备份位置
 
 ```
-崇明 NAS：/share/CACHEDEV3_DATA/aWebSite-backup/
+崇明 NAS：DataVol2 / Data / aWebSite-backup
+（SSH 路径：/share/CACHEDEV3_DATA/Data/aWebSite-backup/）
 ├── MANIFEST.txt                  备份清单（时间/来源/恢复方法）
 ├── assets/
 │   ├── static-images/            ← static/images/

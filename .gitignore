@@ -11,3 +11,9 @@ media/
 *.mo
 .DS_Store
 project.private.config.json
+
+# 大体积二进制/构建产物（不入库；备份见 README 的「资产与备份」）
+venv/
+staticfiles/
+static/images/
+miniprogram/images/ex-demos/

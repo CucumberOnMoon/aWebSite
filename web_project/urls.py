@@ -26,6 +26,7 @@ urlpatterns = [
     path('weight-data/upload/', views.weight_upload, name='weight_upload'),
     path('weight-data/delete/<int:pk>/', views.weight_delete, name='weight_delete'),
     path('fitness/', views.fitness_stats, name='fitness_stats'),
+    path('api/fitness/', api.api_docs, name='api_docs'),
     path('api/fitness/workouts/', api.workout_list, name='api_workout_list'),
     path('api/fitness/workouts/last/', api.workout_last, name='api_workout_last'),
     path('api/fitness/workouts/<int:pk>/', api.workout_detail, name='api_workout_detail'),
@@ -33,6 +34,9 @@ urlpatterns = [
     path('api/fitness/sets/', api.set_create, name='api_set_create'),
     path('api/fitness/sets/history/', api.set_history, name='api_set_history'),
     path('api/fitness/stats/', api.stats_overview, name='api_stats'),
+    path('api/fitness/tiers/', api.tiers_status, name='api_tiers'),
+    path('api/fitness/tiers/legend/', api.tiers_legend, name='api_tiers_legend'),
+    path('api/fitness/bodyweight/', api.bodyweight_log, name='api_bodyweight'),
     path('api/fitness/cycle/', api.cycle_detail, name='api_cycle_detail'),
     path('api/fitness/cycle/<int:pk>/', api.cycle_update, name='api_cycle_update'),
     path('api/fitness/users/', api.api_users, name='api_users'),
@@ -40,8 +44,8 @@ urlpatterns = [
     path('api/fitness/wechat/bind/', api.wechat_bind, name='wechat_bind'),
     path('api/fitness/wechat/create/', api.wechat_create, name='wechat_create'),
     path('api/fitness/wechat/unbound/', api.wechat_unbound, name='wechat_unbound'),
-    path('api/fitness/timer-notify/', api.timer_notify, name='timer_notify'),
     path('api/fitness/exercise-gif/', api.exercise_gif, name='exercise_gif'),
+    path('api/fitness/timer-notify/', api.timer_notify, name='timer_notify'),
 ]
 
 if settings.DEBUG:

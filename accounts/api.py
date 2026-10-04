@@ -20,17 +20,33 @@ from django.conf import settings
 
 from .views import _run_workout_query, _parse_duckdb_table
 
+import datetime
 import logging
+import math
+import re
+
 logger = logging.getLogger(__name__)
+
+# owner 必须是干净的短标识符（与 accounts/middleware.py 同一套规则）
+SAFE_OWNER_RE = re.compile(r'^[A-Za-z0-9_\u4e00-\u9fa5-]{1,20}$')
 
 # ── helpers ──────────────────────────────────────────────────────────
 
 def _owner(request):
-    """Get owner: from body for POST/PATCH, else from query param or fallback."""
+    """Get owner: from body for POST/PATCH, else from query param or fallback.
+
+    第二层防线（第一层是 accounts/middleware.OwnerValidationMiddleware）：
+    非法 owner 不返回原值 —— 返回一个合法字符集内、绝不可能存在的哨兵，
+    这样即便中间件被绕过，脏值也进不了 SQL、也不会落到其他用户名下。
+    """
     if request.method in ('POST', 'PATCH') and request.data.get('owner'):
-        return request.data['owner']
-    # GET: accept ?owner=xxx param, fallback to 'howard'
-    return request.query_params.get('owner') or 'howard'
+        raw = str(request.data['owner']).strip()
+    else:
+        raw = str(request.query_params.get('owner') or 'howard').strip()
+    if not SAFE_OWNER_RE.match(raw):
+        logger.warning('_owner() 兜底拦截非法 owner: %r', raw[:60])
+        return '__invalid_owner__'
+    return raw
 
 BODY_WEIGHT = 75
 ASSISTED = {"助力引体向上", "双杠臂屈伸(助力)"}
@@ -700,3 +716,312 @@ def timer_notify(request):
             return Response({'status': 'failed', 'detail': result}, status=502)
     except Exception as e:
         return Response({'error': '发送通知失败'}, status=502)
+
+# API Docs
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def api_docs(request):
+    base = "https://avocadocloud.duckdns.org/api/fitness"
+    apis = [
+        ("GET", "/workouts/", "?owner=howard&limit=20", "训练记录列表"),
+        ("POST", "/workouts/", '{"owner":"howard","type":"Push"}', "创建训练"),
+        ("GET", "/workouts/last/", "?owner=howard&offset=0", "上次训练(N次前)"),
+        ("PATCH", "/workouts/59/", '{"duration_min":60}', "更新时长/备注"),
+        ("GET", "/exercises/", "?owner=howard", "动作列表"),
+        ("POST", "/sets/", '{"workout_id":59,"exercise_id":1,"weight_kg":55,"reps":12,"set_number":1}', "记录一组"),
+        ("GET", "/sets/history/", "?owner=howard&exercise_id=1&limit=50", "某动作历史"),
+        ("GET", "/stats/", "?owner=howard", "统计数据(PR/分布/周量)"),
+        ("GET", "/cycle/", "?owner=howard", "当前训练循环"),
+        ("POST", "/cycle/", '{"push_a_cal":2000,"pull_a_cal":1800}', "创建循环"),
+        ("PATCH", "/cycle/1/", '{"push_a_cal":2100}', "更新循环"),
+        ("GET", "/users/", "", "用户列表"),
+        ("POST", "/wechat/login/", '{"code":"wx_login_code"}', "微信登录"),
+        ("POST", "/wechat/bind/", '{"openid":"xxx","username":"howard"}', "绑定用户"),
+        ("POST", "/wechat/create/", '{"openid":"xxx","username":"new"}', "创建并绑定"),
+        ("GET", "/wechat/unbound/", "", "未绑定用户"),
+        ("GET", "/exercise-gif/", "?name=barbell+bench+press&owner=howard", "动作GIF"),
+        ("POST", "/timer-notify/", '{"minutes":3}', "倒计时通知"),
+    ]
+    rows = []
+    for method, path, params, desc in apis:
+        ex = path + (params if params.startswith('?') else '')
+        curl = f"curl -X {method} '{base}{ex}' -H 'Referer: {base}'" 
+        if params and not params.startswith('?'):
+            curl += f" -d '{params}' -H 'Content-Type: application/json'"
+        rows.append(f"<tr><td class=m>{method}</td><td><code>{path}</code><br><small>{desc}</small></td><td><code class=c>{curl}</code></td></tr>")
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
+<title>Fitness API</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0d1117;color:#e6edf3;font:14px monospace;padding:24px;max-width:960px;margin:0 auto}}
+h1{{color:#58a6ff;font-size:18px;margin-bottom:4px}}
+.sub{{color:#8b949e;font-size:12px;margin-bottom:16px}}
+table{{border-collapse:collapse;width:100%;font-size:12px}}
+th,td{{border:1px solid #30363d;padding:6px 8px;vertical-align:top}}
+th{{background:#161b22;position:sticky;top:0}}
+tr:hover{{background:#1c2128}}
+code{{background:#161b22;padding:1px 4px;border-radius:3px;font-size:11px}}
+.c{{color:#7ee787;word-break:break-all;font-size:11px}}
+.m{{color:#f0883e;font-weight:bold;white-space:nowrap}}
+small{{color:#8b949e}}
+</style></head><body>
+<h1>Fitness API</h1>
+<p class=sub><code>{base}/</code> | Auth: GET login -> csrftoken -> POST login -> X-CSRFToken + Referer | 所有请求需 owner 参数(QQ bot 必传body)</p>
+<table><tr><th>Method</th><th>Endpoint</th><th>Example</th></tr>
+{''.join(rows)}
+</table></body></html>"""
+    return HttpResponse(html)
+
+
+# ── tiers（段位）─────────────────────────────────────────────────────
+
+def _num(v):
+    """DuckDB CLI 输出的 'NULL' 是字符串，必须手动转 None。"""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if s == '' or s.upper() == 'NULL':
+        return None
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def _str(v):
+    """字符串列同理：DuckDB CLI 的 NULL 也输出成 'NULL' 字面量，必须转成 JSON null。
+
+    （2026-09-24 踩过：引体向上的 cur_target 返回了字符串 "NULL"，前端拿到会当有效值）
+    """
+    if v is None:
+        return None
+    s = str(v).strip()
+    return None if (s == '' or s.upper() == 'NULL') else s
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tiers_status(request):
+    """当前各项能力段位 + 到下一段的进度（数据源：DuckDB 的 tiers 表）。
+
+    tiers 表由 VPS 上的 tier_check.py 在每次收工检测段位时自动刷新。
+    返回每条含：lift/metric/cur_value/e1rm_kg/tier/tier_index/tier_floor/
+    next_tier/next_need/gap/progress/progress_pct/next_e1rm_kg/bodyweight/best_date
+    """
+    sql = f"""
+        SELECT lift, metric, cur_value, e1rm_kg, tier, tier_index, tier_floor,
+               next_tier, next_need, gap, bodyweight, next_working_kg, next_working_reps,
+               next_target, cur_working_kg, cur_working_reps, cur_target,
+               prev_progress, cur_progress, progress_delta,
+               best_date, updated_at
+        FROM tiers
+        WHERE owner = '{_owner(request)}'
+        ORDER BY tier_index DESC, gap ASC NULLS LAST
+    """
+    rows = _run_sql(sql) or []
+    out = []
+    for r in rows:
+        cur = _num(r.get('cur_value')) or 0.0
+        floor = _num(r.get('tier_floor')) or 0.0
+        need = _num(r.get('next_need'))
+        pct = None
+        if need is not None:
+            pct = 0.0 if need <= floor else max(0.0, min(1.0, (cur - floor) / (need - floor)))
+        bw = _num(r.get('bodyweight'))
+        metric = r.get('metric')
+        out.append({
+            'lift': _str(r.get('lift')),
+            'metric': _str(r.get('metric')),
+            'cur_value': round(cur, 3),
+            'e1rm_kg': (round(_num(r.get('e1rm_kg')), 1) if _num(r.get('e1rm_kg')) else None),
+            'tier': _str(r.get('tier')),
+            'tier_index': int(_num(r.get('tier_index')) or 0),
+            'tier_floor': round(floor, 3),
+            'next_tier': _str(r.get('next_tier')),
+            'next_need': (round(need, 3) if need is not None else None),
+            'gap': (round(_num(r.get('gap')), 3) if _num(r.get('gap')) is not None else None),
+            'progress': (round(pct, 4) if pct is not None else None),
+            'progress_pct': (round(pct * 100) if pct is not None else None),
+            'next_e1rm_kg': (round(need * bw, 1) if (metric == 'ratio' and need and bw) else None),
+            # 可执行目标：重量 × 次数（他没推过极限，做组重量才是能直接执行的）
+            'next_working_kg': _num(r.get('next_working_kg')),
+            'next_working_reps': (int(_num(r.get('next_working_reps')))
+                                  if _num(r.get('next_working_reps')) else None),
+            'next_target': _str(r.get('next_target')),
+            # 当前做组数据 = 产出当前 e1RM 的那一组（与 e1rm_kg/段位/进度严格同源）
+            'cur_working_kg': _num(r.get('cur_working_kg')),
+            'cur_working_reps': (int(_num(r.get('cur_working_reps')))
+                                 if _num(r.get('cur_working_reps')) else None),
+            'cur_target': _str(r.get('cur_target')),
+            # 本次进度变化（相对上一次训练）；升段时 progress_delta 为 null（进度已重置）
+            'prev_progress_pct': _num(r.get('prev_progress')),
+            'cur_progress_pct': _num(r.get('cur_progress')),
+            'progress_delta': _num(r.get('progress_delta')),
+            'bodyweight': bw,
+            'best_date': _str(r.get('best_date')),
+        })
+    return Response({
+        'count': len(out),
+        'updated_at': (rows[0].get('updated_at') if rows else None),
+        'bodyweight': (out[0]['bodyweight'] if out else None),
+        'results': out,
+    })
+
+
+# ── tiers legend（段位表 + 配色，供前端渲染弹窗）────────────────────
+
+# 展示用的配色 / emoji（集中在这里，前端不再硬编码）
+# 弹窗（段位对照表）里的 3 个主项
+LEGEND_PRIMARY = ('杠铃深蹲', '杠铃卧推', '引体向上')
+LEGEND_REPS = 10                 # 做组重量的口径：10 次
+DEFAULT_BODYWEIGHT = 75.0        # bodyweight 表里没记录时的兜底体重
+
+# 每档人物画像（profile = 画像 / marker = 标志）—— 故意不含具体公斤数，避免与阈值脱节
+TIER_PROFILE = [
+    ('刚进健身房，动作还在学。', '先把动作和习惯建立起来，别急着加重量'),
+    ('练了几个月，动作基本成型。', '已经是健身房里"会练"的那一半'),
+    ('入门完成，重量开始像样。', '卧推 1× 体重、深蹲 1.5× 体重 —— 力量训练的及格线'),
+    ('健身房里的中上水平。', '深蹲 300 磅 / 卧推 200 磅 —— 公认的"强壮线"'),
+    ('业余练家里很少见。', '同体重的人里，你已经在前面那一小撮'),
+    ('接近力量举业余门槛。', '开始有人主动问你"怎么练的"'),
+    ('业余顶尖。', '大概率是你所在健身房同体重最强的那几个'),
+    ('万里挑一，竞赛级水准。', '同体重下的顶级表现'),
+]
+
+TIER_STYLE = [
+    ('倔强青铜', '#8b6b4a', '🥉'),
+    ('秩序白银', '#a8b3b8', '🥈'),
+    ('荣耀黄金', '#f5c342', '🥇'),
+    ('尊贵铂金', '#7fd8e8', '💠'),
+    ('永恒钻石', '#a78bfa', '💎'),
+    ('至尊星耀', '#f778ba', '⭐'),
+    ('最强王者', '#ff7b72', '👑'),
+    ('荣耀王者', '#ffb020', '🏆'),
+]
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tiers_legend(request):
+    """段位对照表（弹窗用）：阈值 + 配色 + 做组重量 + 人物画像。
+
+    数据源：DuckDB `tier_ladder` 表（tier_check.py 每次运行同步）+ `bodyweight` 表（当前体重）。
+    → 体重一变，返回的公斤数自动跟着变；阈值只在后端维护，前端不用硬编码 ✓
+
+    GET /api/fitness/tiers/legend/?owner=xxx   （owner 只用于取体重，默认 howard）
+    """
+    owner = _owner(request)
+    rows = _run_sql("""
+        SELECT lift, exercise_id, metric, tier_index, threshold, sort_order, increment
+        FROM tier_ladder ORDER BY sort_order, tier_index
+    """) or []
+
+    bw_rows = _run_sql(
+        f"SELECT kg FROM bodyweight WHERE owner = '{owner}' ORDER BY date DESC LIMIT 1"
+    ) or []
+    bw = _num(bw_rows[0].get('kg')) if bw_rows else None
+    bw_source = 'table' if bw else 'default'
+    bw = bw or DEFAULT_BODYWEIGHT
+
+    lifts, index = [], {}
+    for r in rows:
+        name = _str(r.get('lift'))
+        if name not in index:
+            metric = _str(r.get('metric'))
+            inc = _num(r.get('increment')) or 0
+            index[name] = {
+                'lift': name,
+                'exercise_id': int(_num(r.get('exercise_id')) or 0),
+                'metric': metric,
+                'unit': ('倍' if metric == 'ratio' else '个'),
+                'increment': inc or None,
+                'on_legend': name in LEGEND_PRIMARY,
+                'thresholds': [],
+                'working_kg_10': [],
+            }
+            lifts.append(index[name])
+        spec = index[name]
+        th = _num(r.get('threshold'))
+        spec['thresholds'].append(th)
+        if spec['metric'] == 'ratio' and spec['increment'] and th:
+            # 目标 e1RM = 阈值 × 体重 → 反算 10 次的做组重量 → 向上取整到加重档位
+            raw = (th * bw) / (1 + LEGEND_REPS / 30.0)
+            inc = spec['increment']
+            spec['working_kg_10'].append(round(math.ceil(round(raw / inc, 6)) * inc, 2))
+        else:
+            spec['working_kg_10'].append(None)   # 地板档(0) 与 reps 型 → null
+
+    return Response({
+        'count': len(lifts),
+        'bodyweight': bw,
+        'bodyweight_source': bw_source,          # 'table'（体重视图）| 'default'（兜底值）
+        'bodyweight_owner': owner,
+        'reps_for_working': LEGEND_REPS,
+        'tiers': [{'name': n, 'index': i, 'color': c, 'emoji': e,
+                   'profile': (TIER_PROFILE[i][0] if i < len(TIER_PROFILE) else ''),
+                   'marker': (TIER_PROFILE[i][1] if i < len(TIER_PROFILE) else '')}
+                  for i, (n, c, e) in enumerate(TIER_STYLE)],
+        'lifts': lifts,
+        'legend_order': [x['lift'] for x in lifts if x['on_legend']],
+        'notes': [
+            '核心动作按「e1RM（估算最大力量）÷ 体重」的倍数分档',
+            '引体向上按单组最多次数分档',
+            '孤立动作与器械动作不评段位（体重倍数对它们没有意义）',
+            f'working_kg_10 = 达到该档位所需的「做组重量 × {LEGEND_REPS}」（已按当前体重换算，向上取整到加重档位）',
+            '第 0 档（地板档）的 working_kg_10 为 null，前端显示成「< 下一档的值」',
+            '体重变化自动重算（数据源 bodyweight 表）',
+            '阈值与文案只在后端维护，前端不用硬编码',
+        ],
+    })
+
+
+# ── bodyweight（体重记录）────────────────────────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def bodyweight_log(request):
+    """体重记录。
+
+    GET  /api/fitness/bodyweight/?owner=xxx         → 全部记录（按日期升序）+ 最新一条
+    POST /api/fitness/bodyweight/                    → 记一条 {owner, date, kg}
+
+    用途：段位按「e1RM ÷ 体重」算，体重会变 —— 有了这张表就按训练当天的体重算，
+    不用改脚本常量（2026-09-24 加的）。
+    """
+    owner = _owner(request)
+
+    if request.method == 'GET':
+        sql = f"""
+            SELECT date, kg FROM bodyweight
+            WHERE owner = '{owner}' ORDER BY date
+        """
+        rows = _run_sql(sql) or []
+        out = [{'date': _str(r.get('date')), 'kg': _num(r.get('kg'))} for r in rows]
+        return Response({
+            'count': len(out),
+            'latest': (out[-1] if out else None),
+            'results': out,
+        })
+
+    # POST：记一条
+    day = str(request.data.get('date') or datetime.date.today().isoformat())
+    kg = request.data.get('kg', request.data.get('weight_kg'))
+    try:
+        kg = float(kg)
+        datetime.date.fromisoformat(day)
+    except (TypeError, ValueError):
+        return Response({'error': 'date(YYYY-MM-DD) 与 kg 必填且格式正确'}, status=400)
+    if not 20 <= kg <= 300:
+        return Response({'error': 'kg 需在 20–300 之间'}, status=400)
+
+    _run_workout_query(
+        f"DELETE FROM bodyweight WHERE owner = '{owner}' AND date = DATE '{day}';"
+    )
+    _run_workout_query(
+        f"INSERT INTO bodyweight VALUES ('{owner}', DATE '{day}', {kg}, now())"
+    )
+    return Response({'status': 'created', 'owner': owner, 'date': day, 'kg': kg}, status=201)

@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-!*-+jn_vlj^6_%
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '192.168.71.92',
-                 '23.224.152.81', 'cucumberonmoon.duckdns.org']
+                 '23.224.152.81', 'avocadocloud.duckdns.org']
 
 
 # Application definition
@@ -65,6 +65,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 2026-09-24 安全加固：owner 会被拼进 DuckDB SQL，非法值一律 400（见 accounts/middleware.py）
+    'accounts.middleware.OwnerValidationMiddleware',
 ]
 
 ROOT_URLCONF = 'web_project.urls'
@@ -145,6 +147,7 @@ LOCALE_PATHS = [
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'

@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/home/home",
+    "pages/tiers/tiers",
     "pages/library/library",
     "pages/workout/workout",
     "pages/history/history"
@@ -23,6 +24,12 @@
         "text": "训练",
         "iconPath": "images/home.png",
         "selectedIconPath": "images/home_active.png"
+      },
+      {
+        "pagePath": "pages/tiers/tiers",
+        "text": "段位",
+        "iconPath": "images/tiers.png",
+        "selectedIconPath": "images/tiers_active.png"
       },
       {
         "pagePath": "pages/library/library",

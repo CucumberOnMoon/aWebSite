@@ -1,0 +1,174 @@
+.page { height: 100vh; background: #0d1117; padding-bottom: 20px; }
+
+/* 用户选择器 */
+.user-picker {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: #161b22; border-bottom: 1px solid #30363d;
+}
+.user-picker-left { display: flex; align-items: center; gap: 6px; }
+.user-label { font-size: 13px; color: #8b949e; }
+.picker-box {
+  display: flex; align-items: center; gap: 6px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 6px 12px;
+}
+.picker-text { font-size: 14px; color: #58a6ff; font-weight: 500; }
+.picker-arrow { font-size: 10px; color: #8b949e; }
+
+/* 顶部 */
+.hd { padding: 20px 16px 8px; }
+.hd-title { display: block; font-size: 20px; font-weight: 700; color: #e6edf3; }
+.hd-sub { display: block; font-size: 11px; color: #8b949e; margin-top: 4px; }
+
+/* 提示 */
+.hint { text-align: center; padding: 80px 16px; font-size: 14px; color: #8b949e; }
+.retry-btn {
+  display: inline-block; margin-top: 14px; padding: 8px 24px; border-radius: 6px;
+  background: #21262d; color: #58a6ff; font-size: 14px; border: 1px solid #30363d;
+}
+
+/* 卡片 */
+.card {
+  margin: 8px 16px; background: #161b22; border: 1px solid #30363d;
+  border-radius: 12px; padding: 14px 16px;
+}
+
+.t-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.t-lift { flex: 1; font-size: 15px; font-weight: 600; color: #e6edf3; }
+.t-tier {
+  font-size: 11px; padding: 2px 9px; border-radius: 10px;
+  border: 1px solid; font-weight: 600; flex-shrink: 0;
+}
+.t-tier:active { opacity: 0.6; }
+.t-cur { font-size: 14px; color: #c9d1d9; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+.t-bar-row { display: flex; align-items: center; gap: 8px; }
+.t-track { flex: 1; height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
+.t-fill { height: 100%; border-radius: 4px; min-width: 2px; transition: width .3s; }
+.t-pct { width: 40px; text-align: right; font-size: 11px; color: #8b949e; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+/* 本次变化角标 */
+.t-delta { width: 48px; text-align: right; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+.dl-up { color: #3fb950; }
+.dl-down { color: #f85149; }
+
+.t-foot { margin-top: 7px; }
+.t-next { font-size: 11px; color: #8b949e; }
+.t-max { color: #3fb950; }
+
+.t-meta {
+  display: flex; gap: 12px; margin-top: 5px;
+  font-size: 10px; color: #484f58;
+}
+
+/* ── 段位说明弹窗 ── */
+.tm-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.65); z-index: 120;
+  display: flex; align-items: center; justify-content: center;
+}
+.tm-box {
+  background: #1c2128; border: 1px solid #444c56; border-radius: 14px;
+  padding: 20px; width: 82%; max-width: 330px;
+}
+.tm-title { display: block; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.tm-nums {
+  display: block; font-size: 12px; color: #58a6ff; font-weight: 600;
+  background: #0d1117; border-radius: 8px; padding: 9px 10px; margin-bottom: 12px;
+  line-height: 1.6;
+}
+.tm-body { display: block; font-size: 13px; color: #c9d1d9; line-height: 1.75; }
+.tm-mark {
+  display: block; font-size: 12px; color: #8b949e; line-height: 1.7;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid #30363d;
+}
+.tm-close {
+  display: block; text-align: center; color: #58a6ff; font-size: 14px;
+  padding: 12px 0 2px; margin-top: 6px;
+}
+.tm-close:active { opacity: 0.6; }
+
+/* 标题行 + 段位表按钮 */
+.hd-top { display: flex; align-items: center; justify-content: space-between; }
+.hd-btn {
+  font-size: 12px; color: #58a6ff; padding: 5px 12px;
+  background: #161b22; border: 1px solid #30363d; border-radius: 14px;
+}
+.hd-btn:active { opacity: 0.6; }
+
+/* ── 段位列表弹窗 ── */
+.tl-box {
+  background: #1c2128; border: 1px solid #444c56; border-radius: 14px;
+  padding: 18px; width: 88%; max-width: 360px;
+  max-height: 82vh; display: flex; flex-direction: column;
+}
+.tl-title { display: block; font-size: 16px; font-weight: 700; color: #e6edf3; }
+.tl-note { display: block; font-size: 11px; color: #8b949e; margin: 4px 0 10px; }
+.tl-scroll { flex: 1; max-height: 62vh; }
+
+
+/* ── 段位对照表（legend）── */
+.tl-hint { text-align: center; padding: 40px 16px; font-size: 13px; color: #8b949e; }
+.tl-retry {
+  display: inline-block; margin-top: 12px; padding: 7px 20px; border-radius: 6px;
+  background: #21262d; color: #58a6ff; font-size: 13px; border: 1px solid #30363d;
+}
+
+/* 表头 */
+.lg-badge {
+  font-size: 15px; width: 26px; height: 26px; line-height: 26px; text-align: center;
+  border-radius: 50%; border: 1px solid;
+}
+
+/* 数据行 */
+
+/* 段位画像 */
+
+/* 说明 */
+.lg-notes {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid #30363d;
+}
+.lg-note-item {
+  display: block; font-size: 10px; color: #8b949e; line-height: 1.7;
+}
+
+/* ── 段位对照表：按档位分组的卡片 ── */
+.lg-item {
+  padding: 12px 0; border-bottom: 1px solid #21262d;
+}
+.lg-item:last-child { border-bottom: none; }
+
+.lg-item-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 9px;
+}
+.lg-badge {
+  font-size: 15px; width: 26px; height: 26px; line-height: 26px; text-align: center;
+  border-radius: 50%; border: 1px solid; flex-shrink: 0;
+}
+.lg-item-name { font-size: 14px; font-weight: 700; }
+
+/* 该档要求 */
+.lg-req {
+  background: #0d1117; border-radius: 8px; padding: 8px 10px; margin-bottom: 9px;
+}
+.lg-req-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 0;
+}
+.lg-req-lift { font-size: 12px; color: #8b949e; }
+.lg-req-need {
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+
+.lg-desc-profile { display: block; font-size: 12px; color: #c9d1d9; line-height: 1.65; }
+.lg-desc-marker { display: block; font-size: 11px; color: #8b949e; line-height: 1.6; margin-top: 4px; }
+
+/* 说明 */
+.lg-notes {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid #30363d;
+}
+.lg-notes-title {
+  display: block; font-size: 11px; font-weight: 600; color: #8b949e; margin-bottom: 6px;
+}
+.lg-note-item {
+  display: block; font-size: 10px; color: #8b949e; line-height: 1.7;
+}

@@ -7,6 +7,19 @@ const EX_COLORS = ['#58a6ff', '#bc8cff', '#39d2c0', '#f5c342', '#f85149', '#3fb9
 
 const COMPOUND_NAMES = ['杠铃深蹲', '杠铃卧推', '罗马尼亚硬拉', '硬拉', '助力引体向上', '高位下拉', '低位划船']
 
+// 8 档段位（低→高），与后端命名一致。仅用于展示聚合，阈值不在前端
+const TIER_NAMES = ['倔强青铜', '秩序白银', '荣耀黄金', '尊贵铂金', '永恒钻石', '至尊星耀', '最强王者', '荣耀王者']
+const TIER_STYLE = {
+  '倔强青铜': { color: '#8b6b4a', emoji: '🥉' },
+  '秩序白银': { color: '#a8b3b8', emoji: '🥈' },
+  '荣耀黄金': { color: '#f5c342', emoji: '🥇' },
+  '尊贵铂金': { color: '#7fd8e8', emoji: '💠' },
+  '永恒钻石': { color: '#a78bfa', emoji: '💎' },
+  '至尊星耀': { color: '#f778ba', emoji: '⭐' },
+  '最强王者': { color: '#ff7b72', emoji: '👑' },
+  '荣耀王者': { color: '#ffb020', emoji: '🏆' },
+}
+
 Page({
   data: {
     loading: false,
@@ -14,12 +27,12 @@ Page({
     userList: [],
     selectedUser: '',
     boundUser: '',
+    showUserList: false,
     hasData: false,
     showBind: false, showBindPicker: false, showCreate: false,
     wechatOpenid: '', unboundList: [], newUserName: '',
 
     totals: {},
-    prList: [],
     strengthLifts: [],
     weeklyVolumes: [],
     calGrid: [], calMonths: [],
@@ -32,11 +45,12 @@ Page({
     exDetailData: null,
     highlights: [],
     strengthChartFailed: false,
-    prCollapsed: true,
+    // 综合段位（6 项平均值取整，后端原序不重排）
+    overallTier: null,
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '1.9.7',
+    appVersion: '2.4.2',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -86,12 +100,58 @@ Page({
     try { this.setData({ userList: await api.getUsers() || [] }) } catch (_) {}
   },
 
-  onUserChange(e) {
-    const user = this.data.userList[e.detail.value]
-    if (user) {
-      api.setCurrentUser(user)
-      this.setData({ selectedUser: user })
-      this.loadAll(user)
+  // ── 自定义用户下拉 ──────────────────────────
+  toggleUserList() {
+    this.setData({ showUserList: !this.data.showUserList })
+  },
+  closeUserList() {
+    this.setData({ showUserList: false })
+  },
+  onPickUser(e) {
+    const user = e.currentTarget.dataset.user
+    if (!user) return
+    this.setData({ showUserList: false })
+    if (user === this.data.selectedUser) return
+    api.setCurrentUser(user)
+    this.setData({ selectedUser: user })
+    this.loadAll(user)
+  },
+
+  // 综合段位 + 综合进度（方案 C：等权，档位价值 = tier_index + 档内进度）
+  // 注意：段位阈值在后端，前端只用后端给的值做展示聚合，不重算任何阈值
+  buildOverallTier(results) {
+    const items = results.filter(r => typeof r.tier_index === 'number')
+    if (!items.length) return null
+
+    // 每个动作的"档位分数" = 已完成档位 + 该档内进度
+    let sumScore = 0
+    let sumProgress = 0
+    for (const r of items) {
+      const pct = typeof r.progress_pct === 'number' ? r.progress_pct : 0
+      sumScore += r.tier_index + pct / 100
+      sumProgress += pct
+    }
+    const n = items.length
+    const score = sumScore / n              // 综合档位分数，如 2.107
+    const avgProgress = sumProgress / n     // 档内平均进度（用于兜底显示）
+
+    const idx = Math.floor(score)
+    const tierFrac = score - idx            // 整数部分内的进度 0~1
+    const name = TIER_NAMES[Math.min(Math.max(idx, 0), TIER_NAMES.length - 1)] || ''
+    const st = TIER_STYLE[name] || {}
+    const nextName = TIER_NAMES[idx + 1] || ''
+
+    return {
+      name,
+      emoji: st.emoji || '',
+      color: st.color || '#8b949e',
+      score,
+      avgIdx: score,
+      avgProgress,
+      // 进度条百分比：综合分数在当前档位内的位置
+      progressPct: Math.round(Math.min(Math.max(tierFrac, 0), 1) * 100),
+      nextName,
+      count: n,
     }
   },
 
@@ -111,13 +171,6 @@ Page({
         this.retryGetWorkouts(),
         this.fetchCompoundHistory(),
       ])
-
-      const prs = (stats.prs || []).filter(p => p.weight_kg > 0)
-      const prList = prs.map(p => ({
-        name: p.name_cn || p.name, weight: p.weight_kg, reps: p.reps, date: p.date,
-        category: p.category, tagClass: 'tag ' + (p.category || '').toLowerCase()
-      }))
-      const displayPrList = prList.slice(0, 5)
 
       const strengthLifts = this.buildStrengthLifts(compoundData)
       const strengthDisplayLifts = this.getStrengthByTab(strengthLifts, 'Push')
@@ -145,6 +198,17 @@ Page({
 
       const highlights = this.computeHighlights(stats.recent || [], weeklyVolumes)
 
+      // 综合段位：独立容错，失败不影响首页其他内容
+      let overallTier = null
+      try {
+        const tierRes = await api.getTiers()
+        if (tierRes && tierRes.results && tierRes.results.length) {
+          overallTier = this.buildOverallTier(tierRes.results)
+        }
+      } catch (err) {
+        console.error('综合段位加载失败:', err)
+      }
+
       // Init cache with offset 0 workout
       if (lastWorkout) {
         this._workoutCache = { 0: { data: lastWorkout, str: lastWorkoutStr } }
@@ -153,10 +217,11 @@ Page({
       hasData = true
       this.setData({
         loading: false, hasData: true,
-        totals, prList, displayPrList, strengthLifts, strengthDisplayLifts, weeklyVolumes,
+        totals, strengthLifts, strengthDisplayLifts, weeklyVolumes,
         calGrid: calData.grid, calMonths: calData.months,
         calYear: calData.year, calMonth: calData.month,
         catBars, lastWorkout, lastWorkoutStr, highlights,
+        overallTier,
         lastWorkoutOffset: 0, lastWorkoutMore: true,
         strengthChartFailed: !strengthLifts.length && this._compoundFetchFailed,
       })
@@ -425,7 +490,13 @@ Page({
     const h = []
     // 如果最近训练有summary，直接用它
     if (workouts && workouts.length && workouts[0].summary) {
-      h.push({ type: 'summary', text: workouts[0].summary.replace(/\\n/g, '\n') })
+      // 「🏆 段位升级：…」行抽出来高亮置顶（后端收工时写进 summary）
+      const _txt = String(workouts[0].summary).replace(/\\n/g, '\n')
+      const _lines = _txt.split('\n').map(l => l.trim()).filter(Boolean)
+      const _ups = _lines.filter(l => l.indexOf('段位升级') >= 0)
+      const _rest = _lines.filter(l => l.indexOf('段位升级') < 0)
+      _ups.forEach(t => h.push({ type: 'tierup', text: t.replace(/^🏆\s*/, '') }))
+      if (_rest.length) h.push({ type: 'summary', text: _rest.join('\n') })
       return h
     }
     // 无summary时走旧逻辑
@@ -543,14 +614,6 @@ Page({
   },
   dismissExDetail() {
     this.setData({ showExDetail: false, exDetailData: null })
-  },
-
-  togglePr() {
-    const collapsed = !this.data.prCollapsed
-    this.setData({
-      prCollapsed: collapsed,
-      displayPrList: collapsed ? this.data.prList.slice(0, 5) : this.data.prList
-    })
   },
 
   onStrengthTabTap(e) {

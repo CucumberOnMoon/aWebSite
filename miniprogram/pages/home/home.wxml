@@ -1,16 +1,40 @@
 <scroll-view scroll-y class="page">
   <!-- 用户选择器 -->
   <view class="user-picker">
-    <view class="user-picker-left">
-      <text class="user-label">查看用户</text>
-      <text class="version-label">v1.9.9</text>
-    </view>
-    <picker mode="selector" range="{{userList}}" bindchange="onUserChange">
-      <view class="picker-box">
-        <text class="picker-text">{{selectedUser || '选择用户'}}</text>
-        <text class="picker-arrow">▾</text>
+    <view class="user-picker-col">
+      <view class="user-picker-left">
+        <text class="hero-tier" wx:if="{{overallTier}}" style="color:{{overallTier.color}};border-color:{{overallTier.color}};background:{{overallTier.color}}1f;box-shadow:0 0 12px {{overallTier.color}}55">{{overallTier.emoji}} {{overallTier.name}}</text>
+        <text class="version-label">v{{appVersion}}</text>
       </view>
-    </picker>
+      <!-- 综合进度条 -->
+      <view class="op-row" wx:if="{{overallTier}}">
+        <view class="op-track">
+          <view class="op-fill" style="width:{{overallTier.progressPct}}%;background:{{overallTier.color}}"></view>
+        </view>
+        <text class="op-pct" style="color:{{overallTier.color}}">{{overallTier.progressPct}}%</text>
+        <text class="op-next" wx:if="{{overallTier.nextName}}">→ {{overallTier.nextName}}</text>
+      </view>
+    </view>
+    <view class="picker-box" bindtap="toggleUserList">
+      <text class="picker-text">{{selectedUser || '选择用户'}}</text>
+      <text class="picker-arrow">{{showUserList ? '▴' : '▾'}}</text>
+    </view>
+  </view>
+
+  <!-- 自定义用户下拉（当前用户高亮） -->
+  <view class="ud-overlay" wx:if="{{showUserList}}" catchtap="closeUserList">
+    <view class="ud-panel" catchtap="noop">
+      <text class="ud-title">选择用户</text>
+      <scroll-view scroll-y class="ud-scroll">
+        <view class="ud-item {{item === selectedUser ? 'ud-cur' : ''}}"
+              wx:for="{{userList}}" wx:key="*this"
+              data-user="{{item}}" bindtap="onPickUser">
+          <text class="ud-name">{{item}}</text>
+          <text class="ud-check" wx:if="{{item === selectedUser}}">✓</text>
+        </view>
+      </scroll-view>
+      <text class="ud-close" bindtap="closeUserList">取消</text>
+    </view>
   </view>
 
   <!-- 绑定弹窗 -->
@@ -47,9 +71,8 @@
 
   <view wx:else>
 
-    <!-- Hero + ① 概览 -->
+    <!-- ① 概览 -->
     <view class="hero-section">
-      <text class="hero-title">🏋️ {{selectedUser}}</text>
       <view class="stat-row">
         <view class="stat-card"><text class="num">{{totals.total_workouts}}</text><text class="label">训练</text></view>
         <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">组数</text></view>
@@ -93,26 +116,10 @@
       <view class="card" wx:if="{{highlights.length}}">
         <text class="card-title">⚡ 亮点</text>
         <view class="hl-item" wx:for="{{highlights}}" wx:key="index">
-          <text wx:if="{{item.type === 'best'}}" class="hl-best">🔥 {{item.text}}</text>
+          <text wx:if="{{item.type === 'tierup'}}" class="hl-tierup">🏆 {{item.text}}</text>
+          <text wx:elif="{{item.type === 'best'}}" class="hl-best">🔥 {{item.text}}</text>
           <text wx:elif="{{item.type === 'summary'}}" class="hl-summary">{{item.text}}</text>
           <text wx:else class="hl-info">📈 {{item.text}}</text>
-        </view>
-      </view>
-
-      <!-- ④ PR 记录 -->
-      <view class="card" wx:if="{{prList.length}}">
-        <view class="card-title-wrap" bindtap="togglePr" style="cursor:pointer;">
-          <text class="card-title">🏆 个人纪录 <text class="card-sub">各动作最高重量 {{prCollapsed ? '▼ 展开' : '▲ 收起'}}</text></text>
-        </view>
-        <view class="pr-item" wx:for="{{displayPrList}}" wx:key="name">
-          <text class="{{item.tagClass}}">{{item.category[0]}}</text>
-          <text class="pr-name">{{item.name}}</text>
-          <text class="pr-weight">{{item.weight}}kg</text>
-          <text class="text-muted">× {{item.reps}}</text>
-          <text class="pr-date">{{item.date.slice(5)}}</text>
-        </view>
-        <view wx:if="{{prList.length > 5}}" class="pr-toggle" bindtap="togglePr">
-          <text>{{prCollapsed ? '▼ 展开全部 (' + prList.length + '项)' : '▲ 收起'}}</text>
         </view>
       </view>
 

@@ -1,0 +1,112 @@
+<scroll-view scroll-y class="page">
+  <!-- 用户选择器 -->
+  <view class="user-picker">
+    <view class="user-picker-left">
+      <text class="user-label">查看用户</text>
+    </view>
+    <picker mode="selector" range="{{userList}}" bindchange="onUserChange">
+      <view class="picker-box">
+        <text class="picker-text">{{selectedUser || '选择用户'}}</text>
+        <text class="picker-arrow">▾</text>
+      </view>
+    </picker>
+  </view>
+
+  <view wx:if="{{loading}}" class="hint">加载中...</view>
+
+  <view wx:elif="{{failed}}" class="hint">
+    <text>段位数据加载失败</text>
+    <view class="retry-btn" bindtap="load">点击重试</view>
+  </view>
+
+  <view wx:elif="{{!hasData}}" class="hint">暂无段位数据</view>
+
+  <block wx:else>
+    <view class="hd">
+      <view class="hd-top">
+        <text class="hd-title">🏆 力量段位</text>
+        <text class="hd-btn" bindtap="onShowTierList">段位表 📖</text>
+      </view>
+      <text class="hd-sub" wx:if="{{bodyweight}}">体重 {{bodyweight}}kg</text>
+      <text class="hd-sub" wx:if="{{updatedAt}}">更新于 {{updatedAt}}</text>
+    </view>
+
+    <view class="card" wx:for="{{tiers}}" wx:key="lift">
+      <view class="t-row">
+        <text class="t-lift">{{item.lift}}</text>
+        <text class="t-cur">{{item.curText}}</text>
+        <text class="t-tier" style="color:{{item.color}};border-color:{{item.color}}44;background:{{item.color}}22" data-tier="{{item.tier}}" catchtap="onTierTap">{{item.tierEmoji}}{{item.tier}}</text>
+      </view>
+      <view class="t-bar-row">
+        <view class="t-track"><view class="t-fill" style="width:{{item.progressPct}}%;background:{{item.color}}"></view></view>
+        <text class="t-delta {{item.deltaClass}}" wx:if="{{item.deltaText}}">{{item.deltaText}}</text>
+        <text class="t-pct" wx:else>{{item.progressPct}}%</text>
+      </view>
+      <view class="t-foot">
+        <text class="t-next" wx:if="{{item.nextText}}">{{item.nextText}}</text>
+        <text class="t-next t-max" wx:else>已达最高段位</text>
+      </view>
+      <view class="t-meta">
+        <text wx:if="{{item.e1rmText}}">{{item.e1rmText}}</text>
+        <text wx:if="{{item.bestDate}}">最佳 {{item.bestDate}}</text>
+      </view>
+    </view>
+  </block>
+</scroll-view>
+
+<!-- 段位说明弹窗 -->
+<view class="tm-overlay" wx:if="{{tierPopup}}" catchtap="dismissTierPopup">
+  <view class="tm-box" catchtap="noop">
+    <text class="tm-title" style="color:{{tierPopup.color}}">{{tierPopup.title}}</text>
+    <text class="tm-nums" wx:if="{{tierPopup.nums}}">{{tierPopup.nums}}</text>
+    <text class="tm-body">{{tierPopup.body}}</text>
+    <text class="tm-mark" wx:if="{{tierPopup.mark}}">{{tierPopup.mark}}</text>
+    <text class="tm-close" bindtap="dismissTierPopup">关闭</text>
+  </view>
+</view>
+
+<!-- 段位列表弹窗（数据全部来自后端 legend） -->
+<view class="tm-overlay" wx:if="{{listPopup}}" catchtap="dismissTierList">
+  <view class="tl-box" catchtap="noop">
+    <text class="tl-title">📖 段位对照表</text>
+    <text class="tl-note" wx:if="{{legend}}">体重 {{legend.bodyweight}}kg ｜ 做组{{legend.reps_for_working}}次<text wx:if="{{legend.bodyweight_source === 'default'}}">（默认值）</text></text>
+
+    <view wx:if="{{legendLoading}}" class="tl-hint">加载中...</view>
+
+    <view wx:elif="{{legendFailed}}" class="tl-hint">
+      <text>段位表加载失败</text>
+      <view class="tl-retry" bindtap="retryLegend">点击重试</view>
+    </view>
+
+    <block wx:elif="{{legend}}">
+      <scroll-view scroll-y class="tl-scroll">
+        <!-- 每档一张卡片 -->
+        <view class="lg-item" wx:for="{{legendRows}}" wx:key="name">
+          <view class="lg-item-head">
+            <text class="lg-badge" style="color:{{item.color}};border-color:{{item.color}}55;background:{{item.color}}22">{{item.emoji}}</text>
+            <text class="lg-item-name" style="color:{{item.color}}">{{item.name}}</text>
+          </view>
+
+          <!-- 该档要求 -->
+          <view class="lg-req">
+            <view class="lg-req-row" wx:for="{{item.items}}" wx:for-item="r" wx:key="lift">
+              <text class="lg-req-lift">{{r.lift}}</text>
+              <text class="lg-req-need" style="color:{{item.color}}">{{r.need}}</text>
+            </view>
+          </view>
+
+          <text class="lg-desc-profile">{{item.profile}}</text>
+          <text class="lg-desc-marker">{{item.marker}}</text>
+        </view>
+
+        <!-- 说明 -->
+        <view class="lg-notes">
+          <text class="lg-notes-title">说明</text>
+          <text class="lg-note-item" wx:for="{{legend.notes}}" wx:key="index">· {{item}}</text>
+        </view>
+      </scroll-view>
+    </block>
+
+    <text class="tm-close" bindtap="dismissTierList">关闭</text>
+  </view>
+</view>

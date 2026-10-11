@@ -1,7 +1,12 @@
 {
   "description": "健身训练记录小程序",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "images/ex-demos"
+      }
+    ],
     "include": []
   },
   "setting": {

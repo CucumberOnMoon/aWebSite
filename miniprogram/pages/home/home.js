@@ -50,7 +50,7 @@ Page({
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.5.1',
+    appVersion: '2.5.2',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -160,20 +160,23 @@ Page({
 
   async loadAll(user) {
     this.setData({ loading: true })
-    let hasData = false
     try {
-      const stats = await api.getStats()
+      // 一次并行发出全部请求：原先是 stats → workouts/compound → last → tiers 四段串行，
+      // 每段一次完整 RTT，叠加 2.5~3s。现在总耗时 ≈ 最慢的那一个。
+      const [stats, allWorkouts, compoundData, lwRes, tierRes] = await Promise.all([
+        api.getStats(),
+        this.retryGetWorkouts().catch(() => []),
+        this.fetchCompoundHistory(),
+        api.getLastWorkout(0).catch(() => null),
+        api.getTiers().catch(() => null),
+      ])
+
       const totals = stats.totals || {}
       if (totals.total_volume) totals.volK = (totals.total_volume / 1000).toFixed(0)
       if (!(totals.total_workouts || 0)) {
         this.setData({ loading: false, hasData: false })
         return
       }
-
-      const [allWorkouts, compoundData] = await Promise.all([
-        this.retryGetWorkouts(),
-        this.fetchCompoundHistory(),
-      ])
 
       const strengthLifts = this.buildStrengthLifts(compoundData)
       const strengthDisplayLifts = this.getStrengthByTab(strengthLifts, 'Push')
@@ -190,44 +193,36 @@ Page({
 
       let lastWorkout = null
       let lastWorkoutStr = ''
-      try {
-        const lw = await api.getLastWorkout(0)
-        if (lw && lw.sets) {
-          const formatted = this.formatLastWorkout(lw)
-          lastWorkout = formatted.data
-          lastWorkoutStr = formatted.str
-        }
-      } catch (_) {}
+      if (lwRes && lwRes.sets) {
+        const formatted = this.formatLastWorkout(lwRes)
+        lastWorkout = formatted.data
+        lastWorkoutStr = formatted.str
+      }
 
       const highlights = this.computeHighlights(stats.recent || [], weeklyVolumes)
 
       // 综合段位：独立容错，失败不影响首页其他内容
       let overallTier = null
-      try {
-        const tierRes = await api.getTiers()
-        if (tierRes && tierRes.results && tierRes.results.length) {
-          overallTier = this.buildOverallTier(tierRes.results)
-        }
-      } catch (err) {
-        console.error('综合段位加载失败:', err)
+      if (tierRes && tierRes.results && tierRes.results.length) {
+        overallTier = this.buildOverallTier(tierRes.results)
       }
 
-      // Init cache with offset 0 workout
       if (lastWorkout) {
         this._workoutCache = { 0: { data: lastWorkout, str: lastWorkoutStr } }
       }
 
-      hasData = true
+      // 第一批：概览数字 + 图表先渲染，用户立刻看到内容（不等 loading 结束）
       this.setData({
         loading: false, hasData: true,
         totals, strengthLifts, strengthDisplayLifts, weeklyVolumes,
         calGrid: calData.grid, calMonths: calData.months,
         calYear: calData.year, calMonth: calData.month,
-        catBars, lastWorkout, lastWorkoutStr, highlights,
-        overallTier,
+        catBars, highlights,
         lastWorkoutOffset: 0, lastWorkoutMore: true,
         strengthChartFailed: !strengthLifts.length && this._compoundFetchFailed,
       })
+      // 第二批：上次训练 + 段位（这两个最不影响首屏观感）
+      this.setData({ lastWorkout, lastWorkoutStr, overallTier })
     } catch (e) {
       console.error('loadAll失败:', e)
       this.setData({ loading: false, hasData: false })
@@ -256,18 +251,17 @@ Page({
         if (found) batch.push({ id: found.id, name: found.name })
       }
       if (!batch.length) return map
-      for (const item of batch) {
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            const sets = await api.getSetHistory(item.id)
-            if (sets && sets.length) { map[item.id] = sets; break }
-          } catch (_) {
-            this._compoundFetchFailed = true
-            if (attempt === 1) break
-            await new Promise(r => setTimeout(r, 500))
-          }
+      // 并行拉各动作的历史（原先是 for + await 串行，7 个动作要等 7 轮）
+      const results = await Promise.all(batch.map(async item => {
+        try {
+          const sets = await api.getSetHistory(item.id)
+          return sets && sets.length ? [item.id, sets] : null
+        } catch (_) {
+          this._compoundFetchFailed = true
+          return null
         }
-      }
+      }))
+      for (const r of results) { if (r) map[r[0]] = r[1] }
     } catch (_) { this._compoundFetchFailed = true }
     return map
   },

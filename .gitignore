@@ -19,6 +19,4 @@ static/images/
 miniprogram/images/ex-demos/
 
 # 本地备份文件一律不入库
-*.bak
-*.bak.*
-*.bak_*
+*.bak*

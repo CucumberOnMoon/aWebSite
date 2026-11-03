@@ -680,15 +680,16 @@ def wechat_unbound(request):
     owners = [row['owner'] for row in data]
 
     openid = (request.query_params.get('openid') or '').strip()
-    # 旧版小程序不传 openid（日志确认），默认按微信渠道过滤：
-    # 只有 QQ 绑定的人仍可见，已绑微信的人不再出现在候选里。
-    channel = _openid_channel(openid) if openid else '微信'
-    bound = _run_sql("SELECT username, openid FROM wechat_binds")
-    if bound is None:
-        return Response({'error': '查询失败'}, status=500)
-    blocked = {r['username'] for r in bound
-               if _openid_channel(r['openid']) == channel}
-    owners = [o for o in owners if o not in blocked]
+    # 渠道只按 openid 判：不传就不猜客户端类型（旧版小程序不传，返回全部候选人，
+    # 真正的拦截在 wechat_bind 里按渠道做）。
+    if openid:
+        channel = _openid_channel(openid)
+        bound = _run_sql("SELECT username, openid FROM wechat_binds")
+        if bound is None:
+            return Response({'error': '查询失败'}, status=500)
+        blocked = {r['username'] for r in bound
+                   if _openid_channel(r['openid']) == channel}
+        owners = [o for o in owners if o not in blocked]
 
     return Response(owners)
 

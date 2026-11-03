@@ -526,26 +526,30 @@ def cycle_update(request, pk):
 
 # ── users ───────────────────────────────────────────────────────────
 
+def _known_users():
+    """全部用户名录：以 users 表为准，兜底并入 workouts / wechat_binds 的历史用户名。
+
+    铁律（2026-11-03）：绑定与候选列表只看「用户是否存在」，
+    与「有没有训练数据」无关。新用户还没练过也必须可绑定。
+    """
+    rows = _run_sql("""
+        SELECT owner AS name FROM users
+        UNION SELECT DISTINCT owner FROM workouts WHERE owner IS NOT NULL
+        UNION SELECT DISTINCT username FROM wechat_binds WHERE username IS NOT NULL
+        ORDER BY name
+    """)
+    if rows is None:
+        return None
+    return [r['name'] for r in rows]
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def api_users(request):
-    """List all users who have workout data."""
-    sql = "SELECT DISTINCT owner FROM workouts ORDER BY owner"
-    data = _run_sql(sql)
-    if data is None:
+    """List all known users (independent of whether they have workouts)."""
+    owners = _known_users()
+    if owners is None:
         return Response({'error': '查询失败'}, status=500)
-    owners = [row['owner'] for row in data]
-
-    # Also include users from wechat_binds that may not have workouts yet
-    binds_sql = "SELECT DISTINCT username FROM wechat_binds ORDER BY username"
-    binds = _run_sql(binds_sql)
-    if binds:
-        bound_users = [r['username'] for r in binds]
-        for u in bound_users:
-            if u not in owners:
-                owners.append(u)
-        owners.sort()
-
     return Response(owners)
 
 
@@ -620,10 +624,12 @@ def wechat_bind(request):
         if same:
             return Response({'error': f'该用户已绑定同渠道（{channel}）账号'}, status=400)
 
-    # Check if username exists in workouts
-    user_exists = _run_sql(f"SELECT 1 FROM workouts WHERE owner = '{safe_user}' LIMIT 1")
-    if not user_exists:
-        return Response({'error': '用户不存在或没有训练数据'}, status=400)
+    # 用户存在性：查名录（users / workouts / binds），不再要求有训练数据
+    known = _known_users()
+    if known is None:
+        return Response({'error': '查询失败'}, status=500)
+    if safe_user not in known:
+        return Response({'error': '用户不存在'}, status=400)
 
     # Create bind
     _run_workout_query(
@@ -670,14 +676,12 @@ def wechat_unbound(request):
     2026-11-03: wechat_binds 混装微信/QQ openid，同一用户名每渠道可各绑一条。
     旧逻辑 `WHERE b.openid IS NULL` 把「已有 QQ 绑定」的人也滤掉了，导致微信端
     可选列表为 0。现在：带 ?openid= → 只排除该渠道已绑定的用户名；
-    不带 → 返回全部有训练数据的用户（小程序旧版本没有传参，保持可用）。
+    不带 → 返回全部已知用户（小程序旧版本没有传参，保持可用）。
     """
-    data = _run_sql(
-        "SELECT DISTINCT owner FROM workouts WHERE owner IS NOT NULL ORDER BY owner"
-    )
+    data = _known_users()
     if data is None:
         return Response({'error': '查询失败'}, status=500)
-    owners = [row['owner'] for row in data]
+    owners = data
 
     openid = (request.query_params.get('openid') or '').strip()
     # 渠道只按 openid 判：不传就不猜客户端类型（旧版小程序不传，返回全部候选人，

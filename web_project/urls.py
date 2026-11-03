@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/fitness/tiers/', api.tiers_status, name='api_tiers'),
     path('api/fitness/tiers/legend/', api.tiers_legend, name='api_tiers_legend'),
     path('api/fitness/bodyweight/', api.bodyweight_log, name='api_bodyweight'),
+    path('api/fitness/plan/', api.plan_detail, name='api_plan'),
     path('api/fitness/cycle/', api.cycle_detail, name='api_cycle_detail'),
     path('api/fitness/cycle/<int:pk>/', api.cycle_update, name='api_cycle_update'),
     path('api/fitness/users/', api.api_users, name='api_users'),
@@ -45,7 +46,10 @@ urlpatterns = [
     path('api/fitness/wechat/create/', api.wechat_create, name='wechat_create'),
     path('api/fitness/wechat/unbound/', api.wechat_unbound, name='wechat_unbound'),
     path('api/fitness/exercise-gif/', api.exercise_gif, name='exercise_gif'),
+    path('api/fitness/exercise-detail/', api.exercise_detail, name='exercise_detail'),
     path('api/fitness/timer-notify/', api.timer_notify, name='timer_notify'),
+    # 首页聚合：一次请求拿齐 stats/workouts/compound/last/tiers
+    path('api/fitness/home/', api.home_overview, name='api_home'),
 ]
 
 if settings.DEBUG:

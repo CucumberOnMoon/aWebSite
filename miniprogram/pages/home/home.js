@@ -50,7 +50,7 @@ Page({
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.5.2',
+    appVersion: '2.5.3',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -161,15 +161,13 @@ Page({
   async loadAll(user) {
     this.setData({ loading: true })
     try {
-      // 一次并行发出全部请求：原先是 stats → workouts/compound → last → tiers 四段串行，
-      // 每段一次完整 RTT，叠加 2.5~3s。现在总耗时 ≈ 最慢的那一个。
-      const [stats, allWorkouts, compoundData, lwRes, tierRes] = await Promise.all([
-        api.getStats(),
-        this.retryGetWorkouts().catch(() => []),
-        this.fetchCompoundHistory(),
-        api.getLastWorkout(0).catch(() => null),
-        api.getTiers().catch(() => null),
-      ])
+      // 一次请求拿齐（后端 /api/fitness/home/ 已合并 stats/workouts/compound/last/tiers）
+      const home = await api.getHome({ limit: 200 })
+      const stats = (home && home.stats) || {}
+      const allWorkouts = (home && home.workouts) || []
+      const compoundData = (home && home.compound) || {}
+      const lwRes = (home && home.last) || null
+      const tierRes = (home && home.tiers) || null
 
       const totals = stats.totals || {}
       if (totals.total_volume) totals.volK = (totals.total_volume / 1000).toFixed(0)
@@ -211,18 +209,15 @@ Page({
         this._workoutCache = { 0: { data: lastWorkout, str: lastWorkoutStr } }
       }
 
-      // 第一批：概览数字 + 图表先渲染，用户立刻看到内容（不等 loading 结束）
       this.setData({
         loading: false, hasData: true,
         totals, strengthLifts, strengthDisplayLifts, weeklyVolumes,
         calGrid: calData.grid, calMonths: calData.months,
         calYear: calData.year, calMonth: calData.month,
-        catBars, highlights,
+        catBars, highlights, lastWorkout, lastWorkoutStr, overallTier,
         lastWorkoutOffset: 0, lastWorkoutMore: true,
-        strengthChartFailed: !strengthLifts.length && this._compoundFetchFailed,
+        strengthChartFailed: !strengthLifts.length,
       })
-      // 第二批：上次训练 + 段位（这两个最不影响首屏观感）
-      this.setData({ lastWorkout, lastWorkoutStr, overallTier })
     } catch (e) {
       console.error('loadAll失败:', e)
       this.setData({ loading: false, hasData: false })

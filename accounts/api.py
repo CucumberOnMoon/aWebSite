@@ -1296,3 +1296,180 @@ def plan_detail(request):
         {'status': 'saved', 'owner': owner, 'dow': dow_i, 'type': ptype, 'count': len(items)},
         status=201,
     )
+
+
+# ── 首页聚合端点 ─────────────────────────────────────────────────────
+# 背景：首页原先发 12 个请求（stats → workouts/compound → last → tiers 四段串行，
+# 且 7 个主项动作的历史各发一次）。每次请求都要付一遍 TLS + 公网 RTT（~0.5-0.9s），
+# 叠加下来首屏 5-7 秒。这里合并成一次往返；查询本身各 0.01s，可以忽略。
+
+COMPOUND_LIFTS = ('杠铃深蹲', '杠铃卧推', '罗马尼亚硬拉', '硬拉',
+                  '助力引体向上', '高位下拉', '低位划船')
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def home_overview(request):
+    """首页一次拿齐：stats / workouts / compound / last / tiers。
+
+    返回结构与各独立端点保持一致，前端可直接替换：
+      stats   = stats_overview 的子集（totals / by_type / recent）
+      workouts= workout_list
+      compound= {exercise_id: [set_history 行]}
+      last    = workout_last
+      tiers   = tiers_status
+    """
+    owner = _owner(request)
+    try:
+        limit = min(int(request.query_params.get('limit') or 200), 500)
+    except (TypeError, ValueError):
+        limit = 200
+    try:
+        offset = max(0, int(request.query_params.get('offset') or 0))
+    except (TypeError, ValueError):
+        offset = 0
+
+    failures = []
+
+    # ── stats（首页只用 totals / by_type / recent；不查 exercises/latest/prs）──
+    totals = _run_sql(f"""
+        SELECT COUNT(DISTINCT w.id) as total_workouts,
+               COUNT(s.id) as total_sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as total_volume,
+               MIN(w.date) as first_date, MAX(w.date) as last_date
+        FROM workouts w JOIN sets s ON w.id = s.workout_id
+        WHERE w.owner = '{owner}'
+    """) or []
+
+    by_type = _run_sql(f"""
+        SELECT w.type, COUNT(DISTINCT w.id) as workouts, COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume
+        FROM workouts w JOIN sets s ON w.id = s.workout_id
+        WHERE w.owner = '{owner}'
+        GROUP BY w.type ORDER BY w.type
+    """) or []
+
+    recent = _run_sql(f"""
+        SELECT w.id, w.date, w.type, w.duration_min, w.summary,
+               COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume
+        FROM workouts w JOIN sets s ON w.id = s.workout_id
+        WHERE w.owner = '{owner}'
+        GROUP BY w.id, w.date, w.type, w.duration_min, w.summary
+        ORDER BY w.date DESC LIMIT 5
+    """) or []
+
+    # ── 全部训练（日历 / 周容量）──
+    workouts = _run_sql(f"""
+        SELECT w.id, w.date, w.type, w.duration_min, w.note,
+               COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as total_volume
+        FROM workouts w LEFT JOIN sets s ON w.id = s.workout_id
+        WHERE w.owner = '{owner}'
+        GROUP BY w.id, w.date, w.type, w.duration_min, w.note
+        ORDER BY w.date DESC LIMIT {limit}
+    """) or []
+
+    # ── 7 个主项的历史：一条 IN 查询代替 7 次请求 ──
+    compound = {}
+    in_list = ','.join("'" + n.replace("'", "''") + "'" for n in COMPOUND_LIFTS)
+    rows = _run_sql(f"""
+        SELECT exercise_id, name, category, weight_kg, reps, date FROM (
+            SELECT e.id as exercise_id, e.name, e.category,
+                   s.weight_kg, s.reps, w.date,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY e.id, w.date
+                       ORDER BY s.weight_kg DESC, s.reps DESC
+                   ) as rn
+            FROM sets s
+            JOIN workouts w ON s.workout_id = w.id
+            JOIN exercises e ON s.exercise_id = e.id
+            WHERE s.owner = '{owner}' AND e.name IN ({in_list})
+        ) sub WHERE rn = 1
+        ORDER BY date
+    """) or []
+    for r in [_adjust(x) for x in rows]:
+        compound.setdefault(str(r.get('exercise_id')), []).append(r)
+
+    # ── 最近一次训练 + 明细 ──
+    last = None
+    lw = _run_sql(f"""
+        SELECT id, date, type, duration_min, note, summary
+        FROM workouts WHERE owner = '{owner}'
+        ORDER BY date DESC LIMIT 1 OFFSET {offset}
+    """) or []
+    if lw:
+        last = lw[0]
+        pk = last['id']
+        raw = _run_workout_query(f"""
+            SELECT s.id, s.set_number, s.weight_kg, s.reps, s.rpe,
+                   e.id as exercise_id, e.name as exercise, e.name_cn as exercise_cn, e.category
+            FROM sets s JOIN exercises e ON s.exercise_id = e.id
+            WHERE s.workout_id = {pk} AND s.owner = '{owner}'
+            ORDER BY e.id, s.set_number
+        """)
+        last['sets'] = [_adjust(r) for r in (_parse_duckdb_table(raw) or [])] if raw else []
+
+    # ── tiers（与 tiers_status 同源的转换逻辑）──
+    trows = _run_sql(f"""
+        SELECT lift, metric, cur_value, e1rm_kg, tier, tier_index, tier_floor,
+               next_tier, next_need, gap, bodyweight, next_working_kg, next_working_reps,
+               next_target, cur_working_kg, cur_working_reps, cur_target,
+               prev_progress, cur_progress, progress_delta, best_date, updated_at
+        FROM tiers WHERE owner = '{owner}'
+        ORDER BY tier_index DESC, gap ASC NULLS LAST
+    """) or []
+    tout = []
+    for r in trows:
+        cur = _num(r.get('cur_value')) or 0.0
+        floor = _num(r.get('tier_floor')) or 0.0
+        need = _num(r.get('next_need'))
+        pct = None
+        if need is not None:
+            pct = 0.0 if need <= floor else max(0.0, min(1.0, (cur - floor) / (need - floor)))
+        bw = _num(r.get('bodyweight'))
+        metric = r.get('metric')
+        tout.append({
+            'lift': _str(r.get('lift')),
+            'metric': _str(r.get('metric')),
+            'cur_value': round(cur, 3),
+            'e1rm_kg': (round(_num(r.get('e1rm_kg')), 1) if _num(r.get('e1rm_kg')) else None),
+            'tier': _str(r.get('tier')),
+            'tier_index': int(_num(r.get('tier_index')) or 0),
+            'tier_floor': round(floor, 3),
+            'next_tier': _str(r.get('next_tier')),
+            'next_need': (round(need, 3) if need is not None else None),
+            'gap': (round(_num(r.get('gap')), 3) if _num(r.get('gap')) is not None else None),
+            'progress': (round(pct, 4) if pct is not None else None),
+            'progress_pct': (round(pct * 100) if pct is not None else None),
+            'next_e1rm_kg': (round(need * bw, 1) if (metric == 'ratio' and need and bw) else None),
+            'next_working_kg': _num(r.get('next_working_kg')),
+            'next_working_reps': (int(_num(r.get('next_working_reps')))
+                                  if _num(r.get('next_working_reps')) else None),
+            'next_target': _str(r.get('next_target')),
+            'cur_working_kg': _num(r.get('cur_working_kg')),
+            'cur_working_reps': (int(_num(r.get('cur_working_reps')))
+                                 if _num(r.get('cur_working_reps')) else None),
+            'cur_target': _str(r.get('cur_target')),
+            'prev_progress_pct': _num(r.get('prev_progress')),
+            'cur_progress_pct': _num(r.get('cur_progress')),
+            'progress_delta': _num(r.get('progress_delta')),
+            'bodyweight': bw,
+            'best_date': _str(r.get('best_date')),
+        })
+    tiers = {
+        'count': len(tout),
+        'updated_at': (trows[0].get('updated_at') if trows else None),
+        'bodyweight': (tout[0]['bodyweight'] if tout else None),
+        'results': tout,
+    }
+
+    return Response({
+        'stats': {'totals': totals[0] if totals else {},
+                  'by_type': by_type,
+                  'recent': recent},
+        'workouts': workouts,
+        'compound': compound,
+        'last': last,
+        'tiers': tiers,
+    })

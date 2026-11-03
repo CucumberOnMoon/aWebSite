@@ -101,6 +101,9 @@ function getStats() { return request('GET', '/api/fitness/stats/') }
 function getTiers() { return request('GET', '/api/fitness/tiers/') }
 function getTiersLegend() { return request('GET', '/api/fitness/tiers/legend/') }
 function getExercises() { return request('GET', '/api/fitness/exercises/') }
+// 首页聚合：一次拿齐 stats / workouts / compound / last / tiers
+// （原先要发 12 个请求，4 段串行 + 7 个主项历史逐个拉，首屏 5-7 秒）
+function getHome(data) { return request('GET', '/api/fitness/home/', data || {}) }
 function startWorkout(data) { return request('POST', '/api/fitness/workouts/', data || { owner: getCurrentUser() }) }
 function logSet(workoutId, exerciseId, weight, reps, rir, setNumber) {
   return request('POST', '/api/fitness/sets/', {
@@ -137,7 +140,7 @@ module.exports = {
   setCurrentUser, getCurrentUser, setOpenid, getOpenid,
   getUsers, getUnbound, wechatLogin, wechatBind, wechatCreate,
   getPlan, savePlan, deletePlan,
-  getStats, getTiers, getTiersLegend, getExercises,
+  getStats, getTiers, getTiersLegend, getExercises, getHome,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
   getSetHistory, getWorkoutSets, getExerciseGif, getExerciseDetail, timerNotify
 }

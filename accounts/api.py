@@ -18,6 +18,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 
+import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
 from .views import _run_workout_query, _parse_duckdb_table
 
 import datetime
@@ -33,16 +38,26 @@ SAFE_OWNER_RE = re.compile(r'^[A-Za-z0-9_\u4e00-\u9fa5-]{1,20}$')
 # ── helpers ──────────────────────────────────────────────────────────
 
 def _owner(request):
-    """Get owner: from body for POST/PATCH, else from query param or fallback.
+    """Get owner: 写操作优先用「openid 解析出的真身份」，其余从 body / query 取。
+
+    身份强制（2026-10-30）：
+      accounts/middleware.OwnerValidationMiddleware 用 X-Openid 查 wechat_binds，
+      把解析出的 username 挂在 request.identity_owner 上。写操作一律以它为准，
+      前端自报的 owner 被忽略 —— 谁登录就写谁名下，冒充不了别人。
+
+    读操作（GET）不强制：小程序需要切换查看他人数据。
 
     第二层防线（第一层是 accounts/middleware.OwnerValidationMiddleware）：
     非法 owner 不返回原值 —— 返回一个合法字符集内、绝不可能存在的哨兵，
     这样即便中间件被绕过，脏值也进不了 SQL、也不会落到其他用户名下。
     """
-    if request.method in ('POST', 'PATCH') and request.data.get('owner'):
+    enforced = getattr(request, 'identity_owner', None)
+    if enforced and request.method in ('POST', 'PATCH', 'PUT', 'DELETE'):
+        return enforced
+    if request.method in ('POST', 'PATCH', 'PUT') and request.data.get('owner'):
         raw = str(request.data['owner']).strip()
     else:
-        raw = str(request.query_params.get('owner') or 'howard').strip()
+        raw = str(request.query_params.get('owner') or '夯嘚嫑嫑啲').strip()
     if not SAFE_OWNER_RE.match(raw):
         logger.warning('_owner() 兜底拦截非法 owner: %r', raw[:60])
         return '__invalid_owner__'
@@ -200,7 +215,14 @@ def workout_last(request):
 def exercise_list(request):
     """List all exercises, or create a new one."""
     if request.method == 'GET':
-        data = _run_sql("SELECT * FROM exercises ORDER BY category, id")
+        # tips 只在详情接口（/exercise-detail/）用到，列表默认不返回它：
+        # 单条约 60% 的体积来自 tips，列表页一律用不上。
+        # 需要全量时显式传 ?full=1。
+        if request.query_params.get('full') == '1':
+            cols = '*'
+        else:
+            cols = 'id, name, category, target_muscle, name_cn, muscle_cn, secondary_cn'
+        data = _run_sql(f"SELECT {cols} FROM exercises ORDER BY category, id")
         if data is None:
             return Response({'error': '查询失败'}, status=500)
         return Response(data)
@@ -656,9 +678,57 @@ def exercise_gif(request):
     if not rows:
         return Response({'gif_url': None})
     path = rows[0]['gif_path']
-    # Convert file path to URL
-    filename = path.split('/')[-1]
-    return Response({'gif_url': f'https://avocadocloud.duckdns.org/images/ex-demos/all/{filename}'})
+    # 2026-10-31：以前硬拼 all/{basename} → 中文名副本那 19 条全 404。
+    # 现在按真实路径换算 URL（gif_path 统一指向 ex-demos/all/xxx.gif）。
+    rel = str(path)
+    for prefix in ('/root/aWebSite/miniprogram',):
+        if rel.startswith(prefix):
+            rel = rel[len(prefix):]
+            break
+    if not rel.startswith('/images/'):
+        rel = '/images/ex-demos/all/' + rel.split('/')[-1]
+    return Response({'gif_url': f'https://avocadocloud.duckdns.org{rel}'})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def exercise_detail(request):
+    """动作详情：目标肌群 + 协同肌 + 注意事项 + GIF（2026-10-31）
+
+    GET /api/fitness/exercise-detail/?name=杠铃卧推   （name 或 name_cn 都行）
+    → {name, name_cn, muscle_cn, secondary_cn, tips: [...], gif_url}
+    """
+    name = request.query_params.get('name', '').strip()
+    if not name:
+        return Response({'error': 'name 必填'}, status=400)
+    safe = name.replace("'", "''")
+    rows = _run_sql(
+        "SELECT id, name, name_cn, muscle_cn, secondary_cn, tips FROM exercises "
+        f"WHERE name = '{safe}' OR name_cn = '{safe}' LIMIT 1")
+    if not rows:
+        return Response({'error': 'not found'}, status=404)
+    r = rows[0]
+    raw_tips = r.get('tips')
+    tips = [] if raw_tips in (None, '') or str(raw_tips) == 'NULL' else \
+        [t.strip() for t in str(raw_tips).split('\n') if t.strip()]
+    gif_url = None
+    g = _run_sql(f"SELECT gif_path FROM exercise_gifs WHERE exercise_id = {int(_num(r.get('id')) or 0)}")
+    if g and g[0].get('gif_path'):
+        p = str(g[0]['gif_path'])
+        if p.startswith('/root/aWebSite/miniprogram'):
+            p = p[len('/root/aWebSite/miniprogram'):]
+        if not p.startswith('/images/'):
+            p = '/images/ex-demos/all/' + p.split('/')[-1]
+        gif_url = f'https://avocadocloud.duckdns.org{p}'
+    return Response({
+        'id': int(_num(r.get('id')) or 0),
+        'name': _str(r.get('name')),
+        'name_cn': _str(r.get('name_cn')),
+        'muscle_cn': _str(r.get('muscle_cn')),
+        'secondary_cn': _str(r.get('secondary_cn')),
+        'tips': tips,
+        'gif_url': gif_url,
+    })
 
 
 @api_view(['POST'])
@@ -915,16 +985,25 @@ def tiers_legend(request):
     GET /api/fitness/tiers/legend/?owner=xxx   （owner 只用于取体重，默认 howard）
     """
     owner = _owner(request)
-    rows = _run_sql("""
+    # 2026-10-31：段位分性别 + 体重权威改 users.weight_kg
+    sex = '男'
+    prof = _run_sql(f"SELECT sex, weight_kg FROM users WHERE owner = '{owner}'") or []
+    if prof:
+        sex = _str(prof[0].get('sex')) or '男'
+        if sex not in ('男', '女'):
+            sex = '男'
+    rows = _run_sql(f"""
         SELECT lift, exercise_id, metric, tier_index, threshold, sort_order, increment
-        FROM tier_ladder ORDER BY sort_order, tier_index
+        FROM tier_ladder WHERE sex = '{sex}' ORDER BY sort_order, tier_index
     """) or []
 
-    bw_rows = _run_sql(
+    bw = _num(prof[0].get('weight_kg')) if prof else None
+    bw_rows = [] if bw else (_run_sql(
         f"SELECT kg FROM bodyweight WHERE owner = '{owner}' ORDER BY date DESC LIMIT 1"
-    ) or []
-    bw = _num(bw_rows[0].get('kg')) if bw_rows else None
-    bw_source = 'table' if bw else 'default'
+    ) or [])
+    bw = bw or (_num(bw_rows[0].get('kg')) if bw_rows else None)
+    bw_source = 'users' if bw and prof and _num(prof[0].get('weight_kg')) else (
+        'table' if bw else 'default')
     bw = bw or DEFAULT_BODYWEIGHT
 
     lifts, index = [], {}
@@ -1025,3 +1104,195 @@ def bodyweight_log(request):
         f"INSERT INTO bodyweight VALUES ('{owner}', DATE '{day}', {kg}, now())"
     )
     return Response({'status': 'created', 'owner': owner, 'date': day, 'kg': kg}, status=201)
+
+
+# ── training plan（按人、按星期几）────────────────────────────────────
+PLAN_TYPES = ('Push', 'Pull', 'Legs', 'Rest')
+
+
+def _int_or_null(v):
+    """前端可能传 ""/None/number，统一成 SQL 里的整数或 NULL。"""
+    if v in (None, ''):
+        return 'NULL'
+    try:
+        return str(int(float(v)))
+    except (TypeError, ValueError):
+        return 'NULL'
+
+
+@api_view(['GET', 'POST', 'DELETE'])
+@permission_classes([AllowAny])
+def plan_detail(request):
+    """训练计划：按人 + 星期几存（一人一套，互不干扰）。
+
+      GET    /api/fitness/plan/?owner=xx[&dow=N]
+             → 该人计划（不传 dow 返回整周）。0=周日 … 6=周六。
+      POST   /api/fitness/plan/  {dow, type, items:[{exercise_id, target_sets, target_reps}]}
+             → 整体替换该天（type=Rest 时清空动作）
+      DELETE /api/fitness/plan/?dow=N
+             → 清空该天
+
+    写操作 owner 由 middleware 按 openid 强制，前端传的 owner 被忽略。
+    """
+    owner = _owner(request)
+
+    # ── GET ──
+    if request.method == 'GET':
+        where = f"p.owner = '{owner}'"
+        dow_raw = request.query_params.get('dow')
+        if dow_raw not in (None, ''):
+            try:
+                dow_i = int(dow_raw)
+            except (TypeError, ValueError):
+                return Response({'error': 'dow 需为 0-6 的整数（0=周日）'}, status=400)
+            if not 0 <= dow_i <= 6:
+                return Response({'error': 'dow 需为 0-6（0=周日）'}, status=400)
+            where += f" AND p.dow = {dow_i}"
+
+        sql = f"""
+            SELECT p.dow, p.type, p.seq, p.exercise_id,
+                   e.name_cn AS exercise_name, e.name AS exercise_name_en, e.category,
+                   p.target_sets, p.target_reps, p.note
+            FROM plan_items p
+            LEFT JOIN exercises e ON e.id = p.exercise_id
+            WHERE {where}
+            ORDER BY p.dow, p.seq
+        """
+        rows = _run_sql(sql) or []
+
+        def _int(v):
+            n = _num(v)
+            return None if n is None else int(n)
+
+        week = {}
+        for r in rows:
+            d = _int(r.get('dow'))
+            week.setdefault(d, {'dow': d, 'type': _str(r.get('type')), 'items': []})
+            eid = _int(r.get('exercise_id'))
+            if eid is None:
+                continue          # Rest 占位行：只用来标记「这天有安排」，不是动作
+            week[d]['items'].append({
+                'seq': _int(r.get('seq')),
+                'exercise_id': eid,
+                'exercise_name': _str(r.get('exercise_name')),
+                'exercise_name_en': _str(r.get('exercise_name_en')),
+                'category': _str(r.get('category')),
+                'target_sets': _int(r.get('target_sets')),
+                'target_reps': _int(r.get('target_reps')),
+                'note': _str(r.get('note')),
+            })
+        # ── 今天是否已经练过（2026-10-30 用户要求：练完就别再显示今日计划）──
+        # 判据：当天有 workout 记录 **且** 至少记了 1 条 set。
+        # 只建了 workout 但一组没记（Phase 1 建壳的情况）不算练完，避免误隐藏。
+        # ⚠️ 日期用 Python 的本地日期传入，不用 DuckDB 的 CURRENT_DATE（时区可能差一天）。
+        today_str = datetime.date.today().isoformat()
+        today_info = {'date': today_str, 'done': False, 'workouts': 0,
+                      'sets_logged': 0, 'workout_id': None, 'type': None,
+                      'duration_min': None}
+        try:
+            t_sql = f"""
+                SELECT w.id AS wid, w.type, w.duration_min, count(s.id) AS sets_logged
+                FROM workouts w
+                LEFT JOIN sets s ON s.workout_id = w.id
+                WHERE w.owner = '{owner}' AND w.date = DATE '{today_str}'
+                GROUP BY w.id, w.type, w.duration_min
+                ORDER BY w.id
+            """
+            t_rows = _run_sql(t_sql) or []
+            if t_rows:
+                today_info['workouts'] = len(t_rows)
+                today_info['sets_logged'] = sum(_int(r.get('sets_logged')) or 0 for r in t_rows)
+                last = t_rows[-1]
+                today_info['workout_id'] = _int(last.get('wid'))
+                today_info['type'] = _str(last.get('type'))
+                today_info['duration_min'] = _int(last.get('duration_min'))
+                today_info['done'] = today_info['sets_logged'] > 0
+        except Exception as e:                                  # noqa: BLE001
+            logger.warning('today 状态查询失败（不影响计划返回）: %s', e)
+
+        return Response({
+            'owner': owner,
+            'count': len(rows),
+            'days': [week[k] for k in sorted(week)],
+            'today': today_info,
+        })
+
+    # ── DELETE ──
+    if request.method == 'DELETE':
+        dow_raw = request.query_params.get('dow')
+        try:
+            dow_i = int(dow_raw)
+        except (TypeError, ValueError):
+            return Response({'error': 'dow 必填，0-6（0=周日）'}, status=400)
+        if not 0 <= dow_i <= 6:
+            return Response({'error': 'dow 需为 0-6（0=周日）'}, status=400)
+        _run_workout_query(
+            f"DELETE FROM plan_items WHERE owner = '{owner}' AND dow = {dow_i}"
+        )
+        return Response({'status': 'deleted', 'owner': owner, 'dow': dow_i})
+
+    # ── POST：整体替换某天 ──
+    data = request.data
+    try:
+        dow_i = int(data.get('dow'))
+    except (TypeError, ValueError):
+        return Response({'error': 'dow 必填，0-6（0=周日）'}, status=400)
+    if not 0 <= dow_i <= 6:
+        return Response({'error': 'dow 需为 0-6（0=周日）'}, status=400)
+
+    ptype = str(data.get('type') or '').strip()
+    if ptype not in PLAN_TYPES:
+        return Response({'error': 'type 需为 Push / Pull / Legs / Rest'}, status=400)
+
+    items = data.get('items') or []
+    if not isinstance(items, list):
+        return Response({'error': 'items 必须是数组'}, status=400)
+    if len(items) > 30:
+        return Response({'error': '单日动作不能超过 30 个'}, status=400)
+
+    stmts = [f"DELETE FROM plan_items WHERE owner = '{owner}' AND dow = {dow_i}"]
+
+    if ptype == 'Rest':
+        # 休息日也要留一行占位，否则 GET 无法区分「休息」和「没设计划」
+        stmts.append(
+            f"INSERT INTO plan_items (owner, dow, type, seq, exercise_id) "
+            f"VALUES ('{owner}', {dow_i}, 'Rest', 0, NULL)"
+        )
+    elif items:
+        # 一次性校验完再落库，避免半截写入
+        eids = []
+        for i, it in enumerate(items, 1):
+            if not isinstance(it, dict):
+                return Response({'error': f'第 {i} 个动作格式不对'}, status=400)
+            try:
+                eids.append(int(it.get('exercise_id')))
+            except (TypeError, ValueError):
+                return Response({'error': f'第 {i} 个动作缺 exercise_id'}, status=400)
+        placeholders = ','.join(str(x) for x in set(eids))
+        found = _run_sql(f"SELECT id FROM exercises WHERE id IN ({placeholders})") or []
+        missing = set(eids) - {_num(r.get('id')) for r in found}
+        if missing:
+            return Response({'error': f'动作不存在: {sorted(missing)}'}, status=400)
+
+        values = []
+        for seq, (it, eid) in enumerate(zip(items, eids), 1):
+            note = str(it.get('note') or '').replace("'", "''")[:100]
+            values.append(
+                f"('{owner}', {dow_i}, '{ptype}', {seq}, {eid}, "
+                f"{_int_or_null(it.get('target_sets'))}, "
+                f"{_int_or_null(it.get('target_reps'))}, "
+                f"{('NULL' if not note else chr(39) + note + chr(39))})"
+            )
+        stmts.append(
+            "INSERT INTO plan_items (owner, dow, type, seq, exercise_id, "
+            "target_sets, target_reps, note) VALUES " + ','.join(values)
+        )
+
+    raw = _run_workout_query('; '.join(stmts))
+    if raw is None:
+        logger.error('plan POST 写库失败: owner=%s dow=%s', owner, dow_i)
+        return Response({'error': '写库失败'}, status=500)
+    return Response(
+        {'status': 'saved', 'owner': owner, 'dow': dow_i, 'type': ptype, 'count': len(items)},
+        status=201,
+    )

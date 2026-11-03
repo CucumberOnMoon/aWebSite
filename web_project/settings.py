@@ -143,6 +143,23 @@ LOCALE_PATHS = [
 ]
 
 
+# ── Logging：把 fitness 中间件的身份解析日志放进 journal ──────────────
+# 只给 accounts.middleware 开 INFO，其余 logger 走 Django 默认，避免刷屏。
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'loggers': {
+        'accounts.middleware': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 

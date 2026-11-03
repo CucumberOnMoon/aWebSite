@@ -859,11 +859,43 @@ logger = logging.getLogger(__name__)
 
 WORKOUT_DB_CMD = "/home/howard/.local/bin/workout-db"
 
+# ── DuckDB 并发闸（2026-10-30 修：小程序首页并发请求抢锁导致 plan 返回空 / exercises 500）──
+# 根因：每个请求 fork 一个 duckdb CLI，DuckDB 写锁是独占的 → 并发时抢输的报
+#       "Could not set lock on file: Conflicting lock is held in /usr/local/bin/duckdb"
+#       → 上层吞错返回空/500。
+# 修法：① 只读查询一律加 -readonly（读-读可并行）
+#       ② 进程内 Lock 不够（gunicorn 3 worker）→ 用 fcntl.flock 跨进程协调：
+#          读拿共享锁、写拿独占锁，这样读-读并行、读-写与写-写串行。
+_WRITE_SQL_RE = re.compile(r'^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE|MERGE)\b', re.I)
+_DB_GATE_PATH = "/root/data/workout.db.gate"
 
-def _run_workout_query(sql):
-    """Run a SQL query against DuckDB, works both locally (via workout-db SSH) and on VPS (direct)."""
-    import csv
-    import io
+
+def _run_workout_query(sql, write=None):
+    """Run a SQL query against DuckDB, works both locally (via workout-db SSH) and on VPS (direct).
+
+    write=None → 按 SQL 首关键字自动判定（INSERT/UPDATE/DELETE/CREATE… 为写）。
+    只读走 `-readonly`，可以和其它只读连接并行。
+    """
+    import fcntl
+    import shutil
+    import subprocess
+
+    if write is None:
+        write = bool(_WRITE_SQL_RE.match((sql or "").lstrip()))
+
+    # 跨进程闸：读=共享锁（可并行），写=独占锁
+    gate = open(_DB_GATE_PATH, "a")
+    try:
+        fcntl.flock(gate, fcntl.LOCK_EX if write else fcntl.LOCK_SH)
+        return _run_workout_query_locked(sql, write)
+    finally:
+        try:
+            fcntl.flock(gate, fcntl.LOCK_UN)
+        finally:
+            gate.close()
+
+
+def _run_workout_query_locked(sql, write):
     import shutil
     import subprocess
 
@@ -884,11 +916,13 @@ def _run_workout_query(sql):
             return None
         except FileNotFoundError:
             logger.warning("workout-db not found, trying direct duckdb")
-    
+
     # Direct duckdb (runs on VPS where DB is local)
+    # ⚠️ 只读必须带 -readonly，否则并发请求之间互斥（2026-10-30 事故根因）
+    cmd = ['duckdb'] + ([] if write else ['-readonly']) + ['/root/data/workout.db', '-csv', '-c', sql]
     try:
         result = subprocess.run(
-            ['duckdb', '/root/data/workout.db', '-csv', '-c', sql],
+            cmd,
             capture_output=True, text=True, timeout=15,
         )
         if result.returncode != 0:

@@ -17,6 +17,7 @@ Page({
     CAT_KEYS: ['Push', 'Pull', 'Legs', 'Core', 'Other'],
     muscleIdx: 0,
     currentMuscleLabel: '全部',
+    showMuscleList: false,
   },
 
   async onShow() {
@@ -40,12 +41,13 @@ Page({
     this.applyFilter()
   },
 
-  // ── 肌群下拉切换 ──
-  onMuscleChange(e) {
-    const idx = parseInt(e.detail.value) || 0
-    const options = this.data.muscleOptions
-    const val = (options[idx] && options[idx].value) || ''
-    this.setData({ muscleFilter: val })
+  // ── 肌群下拉（自定义弹层，与首页/历史同款）──
+  openMuscleList() { this.setData({ showMuscleList: true }) },
+  closeMuscleList() { this.setData({ showMuscleList: false }) },
+  noop() {},
+  onPickMuscle(e) {
+    const val = e.currentTarget.dataset.val || ''
+    this.setData({ muscleFilter: val, showMuscleList: false })
     this.applyFilter()
   },
 

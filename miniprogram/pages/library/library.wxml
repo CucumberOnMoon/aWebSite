@@ -14,13 +14,10 @@
         </view>
       </scroll-view>
 
-      <picker class="lib-picker" mode="selector" range="{{muscleOptions}}" range-key="label"
-              value="{{muscleIdx}}" bindchange="onMuscleChange">
-        <view class="lib-picker-trigger">
-          <text>{{currentMuscleLabel}}</text>
-          <text class="lib-arrow">▾</text>
-        </view>
-      </picker>
+      <view class="lib-picker-trigger" bindtap="openMuscleList">
+        <text>{{currentMuscleLabel}}</text>
+        <text class="lib-arrow">{{showMuscleList ? '▴' : '▾'}}</text>
+      </view>
     </view>
 
     <!-- 可滚动列表 -->
@@ -34,6 +31,22 @@
       <view class="lib-empty" wx:if="{{!filteredList.length}}">
         <text>该分类下暂无动作</text>
       </view>
+    </view>
+  </view>
+
+  <!-- 肌群筛选弹层（与首页/历史用户选择同款） -->
+  <view class="ud-overlay" wx:if="{{showMuscleList}}" catchtap="closeMuscleList">
+    <view class="ud-panel" catchtap="noop">
+      <text class="ud-title">选择肌群</text>
+      <scroll-view scroll-y class="ud-scroll">
+        <view class="ud-item {{item.value === muscleFilter ? 'ud-cur' : ''}}"
+              wx:for="{{muscleOptions}}" wx:key="value"
+              data-val="{{item.value}}" bindtap="onPickMuscle">
+          <text class="ud-name">{{item.label}}</text>
+          <text class="ud-check" wx:if="{{item.value === muscleFilter}}">✓</text>
+        </view>
+      </scroll-view>
+      <text class="ud-close" bindtap="closeMuscleList">取消</text>
     </view>
   </view>
 

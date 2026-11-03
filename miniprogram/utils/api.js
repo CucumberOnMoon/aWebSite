@@ -83,7 +83,6 @@ function getUnbound(openid) { return request('GET', '/api/fitness/wechat/unbound
 // 微信登录
 function wechatLogin(code) { return request('POST', '/api/fitness/wechat/login/', { code }) }
 function wechatBind(openid, username) { return request('POST', '/api/fitness/wechat/bind/', { openid, username }) }
-function wechatCreate(openid, username) { return request('POST', '/api/fitness/wechat/create/', { openid, username }) }
 
 // 训练计划（按 owner 存；写操作身份由后端按 X-Openid 强制决定）
 function getPlan(dow) {
@@ -138,7 +137,7 @@ function timerNotify(minutes, owner) {
 module.exports = {
   MAIN_OWNER,
   setCurrentUser, getCurrentUser, setOpenid, getOpenid,
-  getUsers, getUnbound, wechatLogin, wechatBind, wechatCreate,
+  getUsers, getUnbound, wechatLogin, wechatBind,
   getPlan, savePlan, deletePlan,
   getStats, getTiers, getTiersLegend, getExercises, getHome,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,

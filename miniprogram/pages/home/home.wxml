@@ -41,9 +41,8 @@
   <view class="modal-overlay" wx:if="{{showBind}}">
     <view class="modal">
       <text class="modal-title">绑定微信</text>
-      <text class="text-muted" style="margin:8px 0">微信未绑定用户，选择操作：</text>
+      <text class="text-muted" style="margin:8px 0">微信未绑定，请选择要绑定的用户：</text>
       <button class="btn-modal" bindtap="onBindExisting">绑定已有用户（{{unboundList.length}}个可选）</button>
-      <button class="btn-modal secondary" bindtap="onCreateUser">创建新用户</button>
       <text class="modal-cancel" bindtap="onCancelBind">取消</text>
     </view>
   </view>
@@ -53,15 +52,8 @@
       <view class="unbound-row" wx:for="{{unboundList}}" wx:key="*this" bindtap="onConfirmBind" data-user="{{item}}">
         <text>{{item}}</text>
       </view>
+      <text wx:if="{{unboundList.length === 0}}" class="text-muted" style="margin:12px 0">暂无可绑定用户，请联系管理员</text>
       <text class="modal-cancel" bindtap="onCancelBindPicker">取消</text>
-    </view>
-  </view>
-  <view class="modal-overlay" wx:if="{{showCreate}}">
-    <view class="modal">
-      <text class="modal-title">创建新用户</text>
-      <input class="modal-input" placeholder="输入用户名" model:value="{{newUserName}}" />
-      <button class="btn-modal" bindtap="onConfirmCreate">创建并绑定</button>
-      <text class="modal-cancel" bindtap="onCancelCreate">取消</text>
     </view>
   </view>
 

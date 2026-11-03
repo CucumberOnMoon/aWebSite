@@ -29,8 +29,8 @@ Page({
     boundUser: '',
     showUserList: false,
     hasData: false,
-    showBind: false, showBindPicker: false, showCreate: false,
-    wechatOpenid: '', unboundList: [], newUserName: '',
+    showBind: false, showBindPicker: false,
+    wechatOpenid: '', unboundList: [],
 
     totals: {},
     strengthLifts: [],
@@ -50,7 +50,7 @@ Page({
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.5.6',
+    appVersion: '2.5.7',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -541,25 +541,6 @@ Page({
   },
   onCancelBind() { this.setData({ showBind: false }) },
   onCancelBindPicker() { this.setData({ showBindPicker: false }) },
-  onCreateUser() { this.setData({ showBind: false, showCreate: true, newUserName: '' }) },
-  async onConfirmCreate() {
-    const name = this.data.newUserName.trim()
-    if (!name) { wx.showToast({ title: '请输入用户名', icon: 'none' }); return }
-    wx.showLoading({ title: '创建中...' })
-    try {
-      await api.wechatCreate(this.data.wechatOpenid, name)
-      wx.hideLoading()
-      api.setCurrentUser(name)
-      this.setData({ selectedUser: name, showCreate: false, boundUser: name })
-      const users = await api.getUsers()
-      this.setData({ userList: users || [] })
-      wx.showToast({ title: '创建成功', icon: 'success', duration: 2000 })
-    } catch (e) {
-      wx.hideLoading()
-      wx.showToast({ title: e.message || '创建失败', icon: 'error' })
-    }
-  },
-  onCancelCreate() { this.setData({ showCreate: false }) },
 
   // ── 动作详情弹窗 ─────────────────────────
   noop() {},

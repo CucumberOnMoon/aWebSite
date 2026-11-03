@@ -50,7 +50,7 @@ Page({
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.5.5',
+    appVersion: '2.5.6',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -78,22 +78,22 @@ Page({
         this.setData({ wechatOpenid: res.openid, loading: false, showBind: true })
         this.loadUsers()
         // 后台加载未绑定用户列表
-        api.getUnbound().then(list => {
-          if (list && list.length > 0) this.setData({ unboundList: list })
+        api.getUnbound(this.data.wechatOpenid).then(list => {
+          this.setData({ unboundList: list || [] })
         }).catch(() => {})
       } else {
         this.setData({ loading: false, showBind: true })
         this.loadUsers()
-        api.getUnbound().then(list => {
-          if (list && list.length > 0) this.setData({ unboundList: list })
+        api.getUnbound(this.data.wechatOpenid).then(list => {
+          this.setData({ unboundList: list || [] })
         }).catch(() => {})
       }
     } catch (_) {
       // 微信登录失败，弹绑定框让用户操作
       this.loadUsers()
       this.setData({ showBind: true, loading: false })
-      api.getUnbound().then(list => {
-        if (list && list.length > 0) this.setData({ unboundList: list })
+      api.getUnbound(this.data.wechatOpenid).then(list => {
+        this.setData({ unboundList: list || [] })
       }).catch(() => {})
     }
   },
@@ -517,7 +517,13 @@ Page({
   },
 
   // ── 用户绑定 ─────────────────────────────
-  onBindExisting() { this.setData({ showBind: false, showBindPicker: true }) },
+  onBindExisting() {
+    this.setData({ showBind: false, showBindPicker: true })
+    // 每次打开都按当前渠道重新拉一次，避免列表是旧的
+    api.getUnbound(this.data.wechatOpenid).then(list => {
+      this.setData({ unboundList: list || [] })
+    }).catch(() => {})
+  },
   onConfirmBind(e) { this.doBind(e.currentTarget.dataset.user) },
   async doBind(username) {
     wx.showLoading({ title: '绑定中...' })

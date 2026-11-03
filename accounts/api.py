@@ -35,6 +35,13 @@ logger = logging.getLogger(__name__)
 # owner 必须是干净的短标识符（与 accounts/middleware.py 同一套规则）
 SAFE_OWNER_RE = re.compile(r'^[A-Za-z0-9_\u4e00-\u9fa5-]{1,20}$')
 
+QQ_OPENID_RE = re.compile(r'^[0-9A-Fa-f]{32}$')
+
+
+def _openid_channel(openid):
+    """openid 所属渠道：32 位 hex = QQ，其余(28 位 o9bFo3…) = 微信。"""
+    return 'QQ' if QQ_OPENID_RE.match(str(openid or '').strip()) else '微信'
+
 # ── helpers ──────────────────────────────────────────────────────────
 
 def _owner(request):
@@ -601,11 +608,17 @@ def wechat_bind(request):
     if existing:
         return Response({'error': '该微信已绑定用户: ' + existing[0]['username']}, status=400)
 
-    # Check if username already bound by another wechat
+    # 同渠道查重（2026-11-03）：wechat_binds 混装微信/QQ openid，
+    # 微信是 28 位 o9bFo3… 形式，QQ 是 32 位大写 hex。
+    # 同一用户名允许「微信 + QQ 各一条」，只拦同渠道重复绑定。
     safe_user = username.replace("'", "''")
+    channel = _openid_channel(safe_openid)
     user_bound = _run_sql(f"SELECT openid FROM wechat_binds WHERE username = '{safe_user}'")
     if user_bound:
-        return Response({'error': '该用户已被其他微信绑定'}, status=400)
+        same = [r['openid'] for r in user_bound
+                if _openid_channel(r['openid']) == channel]
+        if same:
+            return Response({'error': f'该用户已绑定同渠道（{channel}）账号'}, status=400)
 
     # Check if username exists in workouts
     user_exists = _run_sql(f"SELECT 1 FROM workouts WHERE owner = '{safe_user}' LIMIT 1")
@@ -652,18 +665,31 @@ def wechat_create(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def wechat_unbound(request):
-    """List users not bound to any wechat account."""
-    sql = """\
-        SELECT DISTINCT w.owner
-        FROM workouts w
-        LEFT JOIN wechat_binds b ON w.owner = b.username
-        WHERE b.openid IS NULL
-        ORDER BY w.owner
+    """List users bindable by this channel.
+
+    2026-11-03: wechat_binds 混装微信/QQ openid，同一用户名每渠道可各绑一条。
+    旧逻辑 `WHERE b.openid IS NULL` 把「已有 QQ 绑定」的人也滤掉了，导致微信端
+    可选列表为 0。现在：带 ?openid= → 只排除该渠道已绑定的用户名；
+    不带 → 返回全部有训练数据的用户（小程序旧版本没有传参，保持可用）。
     """
-    data = _run_sql(sql)
+    data = _run_sql(
+        "SELECT DISTINCT owner FROM workouts WHERE owner IS NOT NULL ORDER BY owner"
+    )
     if data is None:
         return Response({'error': '查询失败'}, status=500)
-    return Response([row['owner'] for row in data])
+    owners = [row['owner'] for row in data]
+
+    openid = (request.query_params.get('openid') or '').strip()
+    if openid:
+        channel = _openid_channel(openid)
+        bound = _run_sql("SELECT username, openid FROM wechat_binds")
+        if bound is None:
+            return Response({'error': '查询失败'}, status=500)
+        blocked = {r['username'] for r in bound
+                   if _openid_channel(r['openid']) == channel}
+        owners = [o for o in owners if o not in blocked]
+
+    return Response(owners)
 
 
 @api_view(['GET'])

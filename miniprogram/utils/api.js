@@ -78,7 +78,7 @@ function getUsers() {
     return out
   })
 }
-function getUnbound() { return request('GET', '/api/fitness/wechat/unbound/') }
+function getUnbound(openid) { return request('GET', '/api/fitness/wechat/unbound/', openid ? { openid } : undefined) }
 
 // 微信登录
 function wechatLogin(code) { return request('POST', '/api/fitness/wechat/login/', { code }) }

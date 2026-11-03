@@ -1,0 +1,47 @@
+page { background: #0d1117; color: #e6edf3; }
+.page { min-height: 100vh; padding: 16rpx 0 60rpx; box-sizing: border-box; }
+
+/* 7 天 tab */
+.dow-tabs { display: flex; margin: 12rpx 24rpx; background: rgba(255,255,255,.04); border-radius: 14rpx; padding: 6rpx; }
+.dow-tab { flex: 1; text-align: center; padding: 14rpx 0; font-size: 26rpx; color: #8b949e; border-radius: 10rpx; }
+.dow-tab.active { background: #58a6ff; color: #0d1117; font-weight: 700; }
+
+/* 类型 */
+.type-row { display: flex; gap: 12rpx; margin: 8rpx 24rpx 16rpx; }
+.type-chip { flex: 1; text-align: center; padding: 16rpx 0; font-size: 28rpx; color: #c9d1d9; background: rgba(255,255,255,.03); border: 1rpx solid rgba(255,255,255,.08); border-radius: 12rpx; }
+.type-chip.active { background: rgba(63,185,80,.15); border-color: #3fb950; color: #3fb950; font-weight: 700; }
+
+.rest-box { margin: 40rpx 24rpx; padding: 60rpx 0; text-align: center; font-size: 32rpx; color: #8b949e; background: rgba(255,255,255,.03); border-radius: 16rpx; }
+
+/* 动作列表 */
+.items { margin: 0 24rpx; }
+.item { background: rgba(255,255,255,.03); border: 1rpx solid rgba(255,255,255,.07); border-radius: 14rpx; padding: 20rpx 24rpx; margin-bottom: 16rpx; }
+.item-main { display: flex; justify-content: space-between; align-items: center; }
+.item-name { font-size: 30rpx; color: #e6edf3; font-weight: 600; }
+.item-del { font-size: 24rpx; color: #f85149; padding: 6rpx 12rpx; }
+.item-targets { display: flex; gap: 24rpx; margin-top: 16rpx; }
+.stepper { display: flex; align-items: center; background: rgba(255,255,255,.05); border-radius: 10rpx; padding: 4rpx; }
+.step-btn { width: 56rpx; text-align: center; font-size: 32rpx; color: #58a6ff; padding: 4rpx 0; }
+.step-val { min-width: 110rpx; text-align: center; font-size: 26rpx; color: #c9d1d9; }
+.items-empty { text-align: center; color: #6e7681; font-size: 26rpx; padding: 40rpx 0; }
+
+.add-btn { margin: 8rpx 24rpx 0; background: rgba(88,166,255,.12); color: #58a6ff; border: 1rpx dashed rgba(88,166,255,.4); border-radius: 14rpx; font-size: 28rpx; }
+
+/* 底部 */
+.footer { margin: 32rpx 24rpx 0; }
+.save-btn { background: #3fb950; color: #0d1117; font-weight: 700; border-radius: 14rpx; font-size: 30rpx; }
+.clear-btn { display: block; text-align: center; margin-top: 20rpx; font-size: 26rpx; color: #6e7681; }
+
+/* 动作选择弹层 */
+.picker-mask { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; z-index: 50; }
+.picker { width: 100%; max-height: 78vh; background: #161b22; border-radius: 24rpx 24rpx 0 0; padding: 24rpx; box-sizing: border-box; display: flex; flex-direction: column; }
+.picker-head { display: flex; justify-content: space-between; align-items: center; }
+.picker-title { font-size: 32rpx; font-weight: 700; }
+.picker-close { font-size: 26rpx; color: #58a6ff; }
+.picker-search { margin-top: 16rpx; background: rgba(255,255,255,.06); border-radius: 10rpx; padding: 14rpx 20rpx; font-size: 26rpx; color: #e6edf3; }
+.picker-cats { display: flex; gap: 12rpx; margin: 16rpx 0; }
+.pcat { flex: 1; text-align: center; padding: 12rpx 0; font-size: 26rpx; color: #8b949e; background: rgba(255,255,255,.04); border-radius: 10rpx; }
+.pcat.active { background: rgba(88,166,255,.18); color: #58a6ff; font-weight: 700; }
+.picker-list { flex: 1; max-height: 50vh; }
+.pitem { padding: 22rpx 8rpx; border-bottom: 1rpx solid rgba(255,255,255,.05); font-size: 28rpx; color: #c9d1d9; }
+.pempty { text-align: center; color: #6e7681; padding: 40rpx 0; font-size: 26rpx; }

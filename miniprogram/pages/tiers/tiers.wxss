@@ -172,3 +172,38 @@
 .lg-note-item {
   display: block; font-size: 10px; color: #8b949e; line-height: 1.7;
 }
+
+/* 用户下拉（与首页一致） */
+.ud-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 130;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 90px;
+}
+.ud-panel {
+  background: #1c2128; border: 1px solid #444c56; border-radius: 14px;
+  padding: 16px; width: 78%; max-width: 300px;
+  max-height: 70vh; display: flex; flex-direction: column;
+}
+.ud-title { display: block; font-size: 14px; font-weight: 600; color: #8b949e; margin-bottom: 10px; }
+.ud-scroll { flex: 1; max-height: 50vh; }
+.ud-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 12px; border-radius: 8px; margin-bottom: 4px;
+  background: #0d1117; border: 1px solid #30363d;
+}
+.ud-item:active { opacity: 0.7; }
+.ud-name { flex: 1; font-size: 15px; color: #c9d1d9; }
+/* 当前用户高亮 */
+.ud-cur {
+  background: #1f6feb22 !important;
+  border-color: #58a6ff !important;
+  box-shadow: 0 0 10px #58a6ff33;
+}
+.ud-cur .ud-name { color: #58a6ff; font-weight: 700; }
+.ud-check { font-size: 15px; color: #58a6ff; font-weight: 700; flex-shrink: 0; }
+.ud-close {
+  display: block; text-align: center; color: #8b949e; font-size: 14px;
+  padding: 12px 0 2px; margin-top: 6px;
+}
+.ud-close:active { opacity: 0.6; }

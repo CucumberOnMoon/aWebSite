@@ -20,6 +20,7 @@ Page({
     loading: true,
     userList: [],
     selectedUser: '',
+    showUserList: false,
     tiers: [],
     updatedAt: '',
     bodyweight: null,
@@ -63,12 +64,24 @@ Page({
 
   onUserChange(e) {
     const user = this.data.userList[e.detail.value]
-    if (user) {
-      api.setCurrentUser(user)
-      // 换用户 → 体重可能不同，legend 缓存作废
-      this.setData({ selectedUser: user, legend: null, legendRows: [] })
-      this.load()
-    }
+    if (user) this._switchUser(user)
+  },
+
+  // ── 用户下拉（与首页一致）──────────────
+  noop() {},
+  toggleUserList() { this.setData({ showUserList: !this.data.showUserList }) },
+  closeUserList() { this.setData({ showUserList: false }) },
+  onPickUser(e) {
+    const user = e.currentTarget.dataset.user
+    this.setData({ showUserList: false })
+    if (!user || user === this.data.selectedUser) return
+    this._switchUser(user)
+  },
+  _switchUser(user) {
+    api.setCurrentUser(user)
+    // 换用户 → 体重可能不同，legend 缓存作废
+    this.setData({ selectedUser: user, legend: null, legendRows: [] })
+    this.load()
   },
 
   // ── 段位说明弹窗（单个段位，数据取自 legend）──────────

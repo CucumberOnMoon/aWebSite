@@ -4,7 +4,8 @@
     "pages/tiers/tiers",
     "pages/library/library",
     "pages/workout/workout",
-    "pages/history/history"
+    "pages/history/history",
+    "pages/plan/plan"
   ],
   "window": {
     "navigationBarTitleText": "有没有你 - 健身",

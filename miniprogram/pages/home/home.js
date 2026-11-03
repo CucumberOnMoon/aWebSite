@@ -50,7 +50,7 @@ Page({
     calPopup: null, calPopupData: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.4.2',
+    appVersion: '2.5.1',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -69,10 +69,12 @@ Page({
       const { code } = await wx.login()
       const res = await api.wechatLogin(code)
       if (res && res.bound && res.username) {
+        api.setOpenid(res.openid)          // 写操作身份，必须在任何写之前
         api.setCurrentUser(res.username)
         this.setData({ selectedUser: res.username, boundUser: res.username, loading: false })
         this.loadAll(res.username)
       } else if (res && res.openid) {
+        api.setOpenid(res.openid)          // 未绑定也要存，建号后第一次写才有身份
         this.setData({ wechatOpenid: res.openid, loading: false, showBind: true })
         this.loadUsers()
         // 后台加载未绑定用户列表
@@ -116,6 +118,7 @@ Page({
     this.setData({ selectedUser: user })
     this.loadAll(user)
   },
+
 
   // 综合段位 + 综合进度（方案 C：等权，档位价值 = tier_index + 档内进度）
   // 注意：段位阈值在后端，前端只用后端给的值做展示聚合，不重算任何阈值
@@ -555,21 +558,7 @@ Page({
       this.setData({ selectedUser: name, showCreate: false, boundUser: name })
       const users = await api.getUsers()
       this.setData({ userList: users || [] })
-      wx.showToast({ title: '创建成功，开始你的第一次训练吧！', icon: 'success', duration: 2000 })
-      setTimeout(async () => {
-        try {
-          const today = new Date()
-          const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
-          const dow = today.getDay()
-          const idx = dow === 0 ? 6 : dow - 1
-          const weekTypes = ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs', 'Rest']
-          const todayType = weekTypes[idx] || 'Push'
-          const workout = await api.startWorkout({ date: dateStr, type: todayType, owner: api.getCurrentUser() })
-          wx.navigateTo({ url: '/pages/workout/workout?wid=' + workout.id })
-        } catch (e) {
-          wx.showToast({ title: e.message || '创建失败', icon: 'error' })
-        }
-      }, 1500)
+      wx.showToast({ title: '创建成功', icon: 'success', duration: 2000 })
     } catch (e) {
       wx.hideLoading()
       wx.showToast({ title: e.message || '创建失败', icon: 'error' })
@@ -577,40 +566,23 @@ Page({
   },
   onCancelCreate() { this.setData({ showCreate: false }) },
 
-  // ── 首次训练引导 ─────────────────────────
-  async onStartFirstWorkout() {
-    wx.showLoading({ title: '创建训练...' })
-    try {
-      const today = new Date()
-      const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
-      const dow = today.getDay()
-      const idx = dow === 0 ? 6 : dow - 1
-      const weekTypes = ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs', 'Rest']
-      const todayType = weekTypes[idx] || 'Push'
-      const workout = await api.startWorkout({
-        date: dateStr, type: todayType, owner: api.getCurrentUser()
-      })
-      wx.hideLoading()
-      wx.navigateTo({ url: '/pages/workout/workout?wid=' + workout.id })
-    } catch (e) {
-      wx.hideLoading()
-      wx.showToast({ title: e.message || '创建失败', icon: 'error' })
-    }
-  },
-
   // ── 动作详情弹窗 ─────────────────────────
   noop() {},
-  async onExNameTap(e) {
+  onExNameTap(e) {
     const name = e.currentTarget.dataset.exname
     const engName = e.currentTarget.dataset.engname || name
-    const info = EXERCISE_INFO[name] || {}
-    let gifUrl = null
-    try {
-      let res = await api.getExerciseGif(engName)
-      if (!res || !res.gif_url) res = await api.getExerciseGif(name)
-      if (res && res.gif_url) gifUrl = res.gif_url
-    } catch (_) {}
-    this.setData({ showExDetail: true, exDetailData: { name, imgName: engName, gif_url: gifUrl, ...info } })
+    const info = EXERCISE_INFO[name] || {}   // 兜底
+    this.setData({ showExDetail: true, exDetailData: { name, imgName: engName, ...info } })
+    // 优先用 name（库里的中文名/英文名接口都认），一次拿全
+    api.getExerciseDetail(name).then(res => {
+      if (!res || res.error) return
+      this.setData({
+        'exDetailData.muscle_cn': res.muscle_cn,
+        'exDetailData.secondary_cn': res.secondary_cn,
+        'exDetailData.tips': res.tips,
+        'exDetailData.gif_url': res.gif_url
+      })
+    }).catch(() => {})
   },
   dismissExDetail() {
     this.setData({ showExDetail: false, exDetailData: null })
@@ -779,7 +751,7 @@ Page({
         wx.vibrateLong({ fail: function() {} })
         // Send WeChat notification (works even if screen off)
         try {
-          var owner = api.getCurrentUser() || 'howard'
+          var owner = api.getCurrentUser() || api.MAIN_OWNER
           api.timerNotify(minutes, owner).catch(function() {})
         } catch(_) {}
         wx.showModal({
@@ -841,7 +813,7 @@ Page({
       wx.vibrateLong({ fail: function() {} })
       // Send WeChat notification (may have been missed in background)
       try {
-        var owner = api.getCurrentUser() || 'howard'
+        var owner = api.getCurrentUser() || api.MAIN_OWNER
         api.timerNotify(mins, owner).catch(function() {})
       } catch(_) {}
       wx.showModal({

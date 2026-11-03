@@ -6,10 +6,58 @@ Page({
     list: [],
     loading: true,
     calPopup: null, calPopupData: null,
+    userList: [],
+    selectedUser: '',
+    showUserList: false,
+    todayPlan: null,
+    todayDone: false,
   },
 
   onShow() {
+    this.loadUsers()
     this.load()
+    this.loadTodayPlan()
+  },
+
+  // 今日计划：练完（today.done）就整块不显示
+  async loadTodayPlan() {
+    try {
+      const dow = new Date().getDay()
+      const plan = await api.getPlan(dow)
+      const today = (plan && plan.today) || null
+      const dayPlan = (plan && plan.days || []).find(d => d.dow === dow) || null
+      this.setData({ todayPlan: dayPlan, todayDone: !!(today && today.done) })
+    } catch (_) {
+      this.setData({ todayPlan: null, todayDone: false })
+    }
+  },
+
+  goPlan() {
+    wx.navigateTo({ url: '/pages/plan/plan' })
+  },
+
+  async loadUsers() {
+    try {
+      const users = await api.getUsers()
+      this.setData({
+        userList: users || [],
+        selectedUser: api.getCurrentUser() || api.MAIN_OWNER,
+      })
+    } catch (_) {}
+  },
+
+  // ── 用户下拉（与首页一致）──────────────
+  noop() {},
+  toggleUserList() { this.setData({ showUserList: !this.data.showUserList }) },
+  closeUserList() { this.setData({ showUserList: false }) },
+  onPickUser(e) {
+    const user = e.currentTarget.dataset.user
+    this.setData({ showUserList: false })
+    if (!user || user === this.data.selectedUser) return
+    api.setCurrentUser(user)
+    this.setData({ selectedUser: user })
+    this.load()
+    this.loadTodayPlan()
   },
 
   async load() {

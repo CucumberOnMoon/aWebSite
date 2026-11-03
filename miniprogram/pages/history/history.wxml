@@ -1,4 +1,55 @@
 <scroll-view scroll-y class="page">
+  <!-- 用户选择（与首页一致） -->
+  <view class="user-picker">
+    <view class="user-picker-left">
+      <text class="user-label">查看用户</text>
+    </view>
+    <view class="picker-box" bindtap="toggleUserList">
+      <text class="picker-text">{{selectedUser || '选择用户'}}</text>
+      <text class="picker-arrow">{{showUserList ? '▴' : '▾'}}</text>
+    </view>
+  </view>
+
+  <view class="ud-overlay" wx:if="{{showUserList}}" catchtap="closeUserList">
+    <view class="ud-panel" catchtap="noop">
+      <text class="ud-title">选择用户</text>
+      <scroll-view scroll-y class="ud-scroll">
+        <view class="ud-item {{item === selectedUser ? 'ud-cur' : ''}}"
+              wx:for="{{userList}}" wx:key="*this"
+              data-user="{{item}}" bindtap="onPickUser">
+          <text class="ud-name">{{item}}</text>
+          <text class="ud-check" wx:if="{{item === selectedUser}}">✓</text>
+        </view>
+      </scroll-view>
+      <text class="ud-close" bindtap="closeUserList">取消</text>
+    </view>
+  </view>
+
+  <!-- 今日计划（今天练完则不显示） -->
+  <view class="today-plan" wx:if="{{!todayDone}}">
+    <view class="tp-head">
+      <text class="tp-title">📋 今日计划</text>
+      <text class="tp-edit" bindtap="goPlan">编辑 ›</text>
+    </view>
+    <block wx:if="{{todayPlan && todayPlan.type === 'Rest'}}">
+      <text class="tp-rest">今天休息 🛌</text>
+    </block>
+    <block wx:elif="{{todayPlan && todayPlan.items && todayPlan.items.length}}">
+      <view class="tp-type-row">
+        <text class="tp-type">{{todayPlan.type === 'Push' ? '推' : todayPlan.type === 'Pull' ? '拉' : '腿'}}</text>
+        <text class="tp-count">{{todayPlan.items.length}} 个动作</text>
+      </view>
+      <view class="tp-item" wx:for="{{todayPlan.items}}" wx:key="seq">
+        <text class="tp-name">{{item.seq}}. {{item.exercise_name}}</text>
+        <text class="tp-target">{{item.target_sets}}×{{item.target_reps}}</text>
+      </view>
+    </block>
+    <block wx:else>
+      <text class="tp-empty">还没设计划，</text>
+      <text class="tp-link" bindtap="goPlan">去设置 ›</text>
+    </block>
+  </view>
+
   <view class="card card-{{item.type}}" wx:for="{{list}}" wx:key="id"
         data-wid="{{item.id}}" data-wtype="{{item.type}}" bindtap="onHistTap">
     <view class="hist-header">

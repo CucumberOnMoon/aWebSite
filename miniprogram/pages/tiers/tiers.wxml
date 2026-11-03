@@ -4,12 +4,26 @@
     <view class="user-picker-left">
       <text class="user-label">查看用户</text>
     </view>
-    <picker mode="selector" range="{{userList}}" bindchange="onUserChange">
-      <view class="picker-box">
-        <text class="picker-text">{{selectedUser || '选择用户'}}</text>
-        <text class="picker-arrow">▾</text>
-      </view>
-    </picker>
+    <view class="picker-box" bindtap="toggleUserList">
+      <text class="picker-text">{{selectedUser || '选择用户'}}</text>
+      <text class="picker-arrow">{{showUserList ? '▴' : '▾'}}</text>
+    </view>
+  </view>
+
+  <!-- 用户下拉（与首页一致） -->
+  <view class="ud-overlay" wx:if="{{showUserList}}" catchtap="closeUserList">
+    <view class="ud-panel" catchtap="noop">
+      <text class="ud-title">选择用户</text>
+      <scroll-view scroll-y class="ud-scroll">
+        <view class="ud-item {{item === selectedUser ? 'ud-cur' : ''}}"
+              wx:for="{{userList}}" wx:key="*this"
+              data-user="{{item}}" bindtap="onPickUser">
+          <text class="ud-name">{{item}}</text>
+          <text class="ud-check" wx:if="{{item === selectedUser}}">✓</text>
+        </view>
+      </scroll-view>
+      <text class="ud-close" bindtap="closeUserList">取消</text>
+    </view>
   </view>
 
   <view wx:if="{{loading}}" class="hint">加载中...</view>

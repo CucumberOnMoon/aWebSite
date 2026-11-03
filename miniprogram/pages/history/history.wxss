@@ -43,3 +43,67 @@
 .set-num { color: #8b949e; font-size: 10px; margin-right: auto; }
 .set-val { color: #3fb950; font-weight: 500; }
 .text-muted { color: #8b949e; font-size: 11px; }
+
+/* 用户选择（与首页一致） */
+.user-picker {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: #161b22; border-bottom: 1px solid #30363d;
+}
+.user-picker-left {
+  display: flex; align-items: center; gap: 6px;
+}
+.user-label { font-size: 13px; color: #8b949e; }
+.picker-box {
+  display: flex; align-items: center; gap: 6px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 6px 12px;
+}
+.picker-text { font-size: 14px; color: #58a6ff; font-weight: 500; }
+.picker-arrow { font-size: 10px; color: #8b949e; }
+.ud-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 130;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 90px;
+}
+.ud-panel {
+  background: #1c2128; border: 1px solid #444c56; border-radius: 14px;
+  padding: 16px; width: 78%; max-width: 300px;
+  max-height: 70vh; display: flex; flex-direction: column;
+}
+.ud-title { display: block; font-size: 14px; font-weight: 600; color: #8b949e; margin-bottom: 10px; }
+.ud-scroll { flex: 1; max-height: 50vh; }
+.ud-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 12px; border-radius: 8px; margin-bottom: 4px;
+  background: #0d1117; border: 1px solid #30363d;
+}
+.ud-item:active { opacity: 0.7; }
+.ud-name { flex: 1; font-size: 15px; color: #c9d1d9; }
+/* 当前用户高亮 */
+.ud-cur {
+  background: #1f6feb22 !important;
+  border-color: #58a6ff !important;
+  box-shadow: 0 0 10px #58a6ff33;
+}
+.ud-cur .ud-name { color: #58a6ff; font-weight: 700; }
+.ud-check { font-size: 15px; color: #58a6ff; font-weight: 700; flex-shrink: 0; }
+.ud-close {
+  display: block; text-align: center; color: #8b949e; font-size: 14px;
+  padding: 12px 0 2px; margin-top: 6px;
+}
+.ud-close:active { opacity: 0.6; }
+
+/* 今日计划 */
+.today-plan { margin: 12px 16px; padding: 14px 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; }
+.tp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tp-title { font-size: 15px; font-weight: 600; color: #e6edf3; }
+.tp-edit { font-size: 13px; color: #58a6ff; }
+.tp-type-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.tp-type { font-size: 13px; font-weight: 700; color: #0d1117; background: #3fb950; border-radius: 6px; padding: 2px 8px; }
+.tp-count { font-size: 12px; color: #8b949e; }
+.tp-item { display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid rgba(255,255,255,.05); }
+.tp-name { font-size: 14px; color: #c9d1d9; }
+.tp-target { font-size: 13px; color: #8b949e; }
+.tp-rest, .tp-empty { font-size: 14px; color: #8b949e; }
+.tp-link { font-size: 14px; color: #58a6ff; }
+

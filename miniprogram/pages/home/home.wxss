@@ -61,21 +61,7 @@
 
 .empty-state { text-align: center; padding: 80px 16px; font-size: 14px; color: #8b949e; }
 
-.btn-start {
-  display: block; width: 80%; margin: 20px auto 0;
-  background: linear-gradient(135deg, #238636, #2ea043);
-  color: white; border: none; border-radius: 12px;
-  padding: 14px 20px; font-size: 16px; font-weight: 600; text-align: center;
-}
-.btn-start:active { opacity: 0.8; }
 
-.btn-start-workout {
-  display: block; width: 60%; margin: 12px auto 0;
-  background: linear-gradient(135deg, #1f6feb, #58a6ff);
-  color: white; border: none; border-radius: 10px;
-  padding: 10px 16px; font-size: 14px; font-weight: 600; text-align: center;
-}
-.btn-start-workout:active { opacity: 0.8; }
 
 /* ① 概览统计 */
 .stat-row { display: flex; gap: 8px; padding: 12px 0 0; }
@@ -288,3 +274,17 @@
   padding: 12px 0 2px; margin-top: 6px;
 }
 .ud-close:active { opacity: 0.6; }
+
+/* 今日计划 */
+.today-plan { margin: 12px 16px; padding: 14px 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; }
+.tp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tp-title { font-size: 15px; font-weight: 600; color: #e6edf3; }
+.tp-edit { font-size: 13px; color: #58a6ff; }
+.tp-type-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.tp-type { font-size: 13px; font-weight: 700; color: #0d1117; background: #3fb950; border-radius: 6px; padding: 2px 8px; }
+.tp-count { font-size: 12px; color: #8b949e; }
+.tp-item { display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid rgba(255,255,255,.05); }
+.tp-name { font-size: 14px; color: #c9d1d9; }
+.tp-target { font-size: 13px; color: #8b949e; }
+.tp-rest, .tp-empty { font-size: 14px; color: #8b949e; }
+.tp-link { font-size: 14px; color: #58a6ff; }

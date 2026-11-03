@@ -79,14 +79,20 @@ Page({
   onExTap(e) {
     const name = e.currentTarget.dataset.exname
     const ex = this.data.allExercises.find(e => e.name === name) || {}
-    const info = EXERCISE_INFO[name] || {}
-    const imgName = info.muscles ? name : (ex.target_muscle && ex.target_muscle !== 'NULL' ? ex.target_muscle : null)
-    this.setData({ showExDetail: true, exDetailData: { name, imgName, name_cn: ex.name_cn || ex.name, target_muscle: ex.target_muscle || '', ...info } })
-    // 异步加载 GIF
-    api.getExerciseGif(name).then(res => {
-      if (res && res.gif_url) {
-        this.setData({ 'exDetailData.gif_url': res.gif_url })
-      }
+    const info = EXERCISE_INFO[name] || {}   // 接口回来前先用硬编码兜底
+    this.setData({
+      showExDetail: true,
+      exDetailData: { name, name_cn: ex.name_cn || ex.name, ...info }
+    })
+    // 一次拿全：目标肌群 + 协同肌 + 注意事项 + 动图
+    api.getExerciseDetail(name).then(res => {
+      if (!res || res.error) return
+      this.setData({
+        'exDetailData.muscle_cn': res.muscle_cn,
+        'exDetailData.secondary_cn': res.secondary_cn,
+        'exDetailData.tips': res.tips,
+        'exDetailData.gif_url': res.gif_url
+      })
     }).catch(() => {})
   },
 

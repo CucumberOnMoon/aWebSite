@@ -78,12 +78,10 @@
         <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">组数</text></view>
         <view class="stat-card"><text class="num">{{totals.volK}}k</text><text class="label">容量kg</text></view>
       </view>
-      <button class="btn-start-workout" wx:if="{{selectedUser === boundUser && selectedUser !== 'howard'}}" bindtap="onStartFirstWorkout">🏋️ 开始训练</button>
     </view>
 
     <view wx:if="{{!hasData}}" class="empty-state">
-      <text class="text-muted">暂无训练数据，来记录你的第一次训练吧！</text>
-      <button class="btn-start" bindtap="onStartFirstWorkout">🏋️ 开始第一次训练</button>
+      <text class="text-muted">暂无训练数据</text>
     </view>
 
     <view wx:else>
@@ -203,12 +201,17 @@
       <!-- 动作详情弹窗 -->
       <view class="ex-overlay" wx:if="{{showExDetail}}" catchtap="dismissExDetail">
         <view class="ex-popup" catchtap="noop">
-          <text class="ex-popup-name">{{exDetailData && exDetailData.name}}</text>
+          <text class="ex-popup-name">{{(exDetailData && (exDetailData.name_cn || exDetailData.name)) || ''}}</text>
           <image class="ex-gif" wx:if="{{exDetailData && exDetailData.gif_url}}" src="{{exDetailData.gif_url}}" mode="aspectFit"/>
           <text class="ex-popup-label">🎯 目标肌肉</text>
-          <text class="ex-popup-text">{{exDetailData && exDetailData.muscles}}</text>
+          <text class="ex-popup-text">{{exDetailData.muscle_cn}}<text wx:if="{{exDetailData.secondary_cn}}">（协同：{{exDetailData.secondary_cn}}）</text></text>
+          <text wx:if="{{!exDetailData.muscle_cn}}" class="ex-popup-text">{{exDetailData.muscles || '暂无数据'}}</text>
           <text class="ex-popup-label" style="margin-top:10px">⚠️ 注意事项</text>
-          <text class="ex-popup-text">{{exDetailData && exDetailData.notes}}</text>
+          <block wx:if="{{exDetailData.tips && exDetailData.tips.length}}">
+            <text class="ex-popup-text" wx:for="{{exDetailData.tips}}" wx:key="*this">· {{item}}
+</text>
+          </block>
+          <text wx:else class="ex-popup-text">{{exDetailData.notes || '暂无数据'}}</text>
           <text class="ex-popup-close" bindtap="dismissExDetail">关闭</text>
         </view>
       </view>

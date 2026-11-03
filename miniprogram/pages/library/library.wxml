@@ -43,9 +43,14 @@
       <text class="ex-popup-name">{{(exDetailData && (exDetailData.name_cn || exDetailData.name)) || ''}}</text>
       <image class="ex-gif" wx:if="{{exDetailData && exDetailData.gif_url}}" src="{{exDetailData.gif_url}}" mode="aspectFit"/>
       <text class="ex-popup-label">🎯 目标肌肉</text>
-      <text class="ex-popup-text">{{(exDetailData && (exDetailData.muscles || (MUSCLE_LABELS[exDetailData.target_muscle] || exDetailData.target_muscle))) || '暂无数据'}}</text>
-      <text class="ex-popup-label" style="margin-top:10px" wx:if="{{exDetailData && exDetailData.notes}}">⚠️ 注意事项</text>
-      <text class="ex-popup-text" wx:if="{{exDetailData && exDetailData.notes}}">{{exDetailData.notes}}</text>
+      <text class="ex-popup-text">{{exDetailData.muscle_cn}}<text wx:if="{{exDetailData.secondary_cn}}">（协同：{{exDetailData.secondary_cn}}）</text></text>
+      <text wx:if="{{!exDetailData.muscle_cn}}" class="ex-popup-text">{{exDetailData.muscles || '暂无数据'}}</text>
+      <text class="ex-popup-label" style="margin-top:10px">⚠️ 注意事项</text>
+      <block wx:if="{{exDetailData.tips && exDetailData.tips.length}}">
+        <text class="ex-popup-text" wx:for="{{exDetailData.tips}}" wx:key="*this">· {{item}}
+</text>
+      </block>
+      <text wx:else class="ex-popup-text">{{exDetailData.notes || '暂无数据'}}</text>
       <text class="ex-popup-close" bindtap="dismissExDetail">关闭</text>
     </view>
   </view>

@@ -1,24 +1,41 @@
 const BASE_URL = 'https://avocadocloud.duckdns.org'
 
+// 主用户（默认 owner）
+// 改名只改这里一处
+const MAIN_OWNER = '夯嘚嫑嫑啲'
+
 let _currentUser = ''
 
 function setCurrentUser(username) {
-  _currentUser = (username || '').toLowerCase()
+  // ⚠️ 不能 toLowerCase：owner 在 DuckDB 里区分大小写，
+  // 库里同时存在 Lucy 和 lucy（两个不同的人），转小写会永久屏蔽大写用户的数据。
+  _currentUser = username || ''
   wx.setStorageSync('selectedUser', _currentUser)
 }
 
 function getCurrentUser() {
-  if (!_currentUser) _currentUser = (wx.getStorageSync('selectedUser') || '').toLowerCase()
+  if (!_currentUser) _currentUser = wx.getStorageSync('selectedUser') || ''
   return _currentUser
+}
+
+// 微信身份：openid 由 wx.login → /wechat/login 换取，写操作靠它定 owner
+function setOpenid(v) {
+  wx.setStorageSync('openid', v || '')
+}
+
+function getOpenid() {
+  return wx.getStorageSync('openid') || ''
 }
 
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
     let url = BASE_URL + path
     const header = { 'Content-Type': 'application/json' }
+    const openid = getOpenid()
+    if (openid) header['X-Openid'] = openid
     if (method === 'GET') {
       const params = []
-      params.push('owner=' + encodeURIComponent(getCurrentUser() || 'howard'))
+      params.push('owner=' + encodeURIComponent(getCurrentUser() || MAIN_OWNER))
       params.push('_t=' + Date.now())  // 防缓存
       if (data && typeof data === 'object') {
         for (const [k, v] of Object.entries(data)) {
@@ -47,14 +64,14 @@ function isValidOwner(name) {
 function getUsers() {
   return request('GET', '/api/fitness/users/').then(list => {
     if (!Array.isArray(list)) return []
-    // 过滤脏数据 + 按小写去重（后端 owner 匹配不区分大小写，避免 Lucy/lucy 重复出现）
+    // 只过滤脏数据，**按原样去重**：Lucy 和 lucy 是数据库里两个不同的人，
+    // 按小写去重会把其中一个人的数据入口吞掉。
     const seen = {}
     const out = []
     for (const name of list) {
       if (!isValidOwner(name)) continue
-      const key = name.toLowerCase()
-      if (seen[key]) continue
-      seen[key] = true
+      if (seen[name]) continue
+      seen[name] = true
       out.push(name)
     }
     out.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
@@ -68,12 +85,22 @@ function wechatLogin(code) { return request('POST', '/api/fitness/wechat/login/'
 function wechatBind(openid, username) { return request('POST', '/api/fitness/wechat/bind/', { openid, username }) }
 function wechatCreate(openid, username) { return request('POST', '/api/fitness/wechat/create/', { openid, username }) }
 
+// 训练计划（按 owner 存；写操作身份由后端按 X-Openid 强制决定）
+function getPlan(dow) {
+  return request('GET', '/api/fitness/plan/', dow === undefined ? null : { dow })
+}
+function savePlan(dow, type, items) {
+  return request('POST', '/api/fitness/plan/', { dow, type, items: items || [] })
+}
+function deletePlan(dow) {
+  return request('DELETE', '/api/fitness/plan/?dow=' + encodeURIComponent(dow) + '&_t=' + Date.now())
+}
+
 // 统计 & 训练
 function getStats() { return request('GET', '/api/fitness/stats/') }
 function getTiers() { return request('GET', '/api/fitness/tiers/') }
 function getTiersLegend() { return request('GET', '/api/fitness/tiers/legend/') }
 function getExercises() { return request('GET', '/api/fitness/exercises/') }
-function getCycle() { return request('GET', '/api/fitness/cycle/') }
 function startWorkout(data) { return request('POST', '/api/fitness/workouts/', data || { owner: getCurrentUser() }) }
 function logSet(workoutId, exerciseId, weight, reps, rir, setNumber) {
   return request('POST', '/api/fitness/sets/', {
@@ -97,14 +124,20 @@ function getWorkoutSets(workoutId) {
 function getExerciseGif(exerciseName) {
   return request('GET', '/api/fitness/exercise-gif/', { name: exerciseName })
 }
+// 动作详情：目标肌群 + 协同肌 + 注意事项 + 动图（一次拿全）
+function getExerciseDetail(exerciseName) {
+  return request('GET', '/api/fitness/exercise-detail/', { name: exerciseName })
+}
 function timerNotify(minutes, owner) {
   return request('POST', '/api/fitness/timer-notify/', { minutes, owner })
 }
 
 module.exports = {
-  setCurrentUser, getCurrentUser,
+  MAIN_OWNER,
+  setCurrentUser, getCurrentUser, setOpenid, getOpenid,
   getUsers, getUnbound, wechatLogin, wechatBind, wechatCreate,
-  getStats, getTiers, getTiersLegend, getExercises, getCycle,
+  getPlan, savePlan, deletePlan,
+  getStats, getTiers, getTiersLegend, getExercises,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
-  getSetHistory, getWorkoutSets, getExerciseGif, timerNotify
+  getSetHistory, getWorkoutSets, getExerciseGif, getExerciseDetail, timerNotify
 }

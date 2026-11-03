@@ -1,0 +1,70 @@
+<view class="page">
+  <!-- 7 天 tab -->
+  <view class="dow-tabs">
+    <view class="dow-tab {{dow === index ? 'active' : ''}}"
+          wx:for="{{dowNames}}" wx:key="index"
+          data-dow="{{index}}" bindtap="onDowTap">{{item}}</view>
+  </view>
+
+  <!-- 类型 -->
+  <view class="type-row">
+    <view class="type-chip {{type === t.key ? 'active' : ''}}"
+          wx:for="{{types}}" wx:key="key"
+          data-type="{{t.key}}" bindtap="onTypeTap">{{t.label}}</view>
+  </view>
+
+  <view class="rest-box" wx:if="{{type === 'Rest'}}">今天休息 🛌</view>
+
+  <block wx:else>
+    <view class="items">
+      <view class="item" wx:for="{{items}}" wx:key="exercise_id">
+        <view class="item-main">
+          <text class="item-name">{{index + 1}}. {{item.exercise_name}}</text>
+          <text class="item-del" data-idx="{{index}}" bindtap="onRemoveItem">删除</text>
+        </view>
+        <view class="item-targets">
+          <view class="stepper">
+            <text class="step-btn" data-idx="{{index}}" data-delta="-1" bindtap="onSetsChange">−</text>
+            <text class="step-val">{{item.target_sets}} 组</text>
+            <text class="step-btn" data-idx="{{index}}" data-delta="1" bindtap="onSetsChange">+</text>
+          </view>
+          <view class="stepper">
+            <text class="step-btn" data-idx="{{index}}" data-delta="-1" bindtap="onRepsChange">−</text>
+            <text class="step-val">{{item.target_reps}} 次</text>
+            <text class="step-btn" data-idx="{{index}}" data-delta="1" bindtap="onRepsChange">+</text>
+          </view>
+        </view>
+      </view>
+      <view class="items-empty" wx:if="{{!items.length}}">还没有动作，点下面添加</view>
+    </view>
+    <button class="add-btn" bindtap="openPicker">＋ 添加动作</button>
+  </block>
+
+  <view class="footer">
+    <button class="save-btn" bindtap="onSave" loading="{{saving}}">保存计划</button>
+    <text class="clear-btn" bindtap="onClear">清空这一天</text>
+  </view>
+
+  <!-- 动作选择 -->
+  <view class="picker-mask" wx:if="{{showPicker}}" catchtap="closePicker">
+    <view class="picker" catchtap="noop">
+      <view class="picker-head">
+        <text class="picker-title">选择动作</text>
+        <text class="picker-close" bindtap="closePicker">关闭</text>
+      </view>
+      <input class="picker-search" placeholder="搜索动作" bindinput="onPickerSearch" />
+      <view class="picker-cats">
+        <text class="pcat {{pickerCategory === c ? 'active' : ''}}"
+              wx:for="{{categories}}" wx:key="*this"
+              data-cat="{{c}}" bindtap="onPickerCat">{{c === 'Push' ? '推' : c === 'Pull' ? '拉' : '腿'}}</text>
+      </view>
+      <scroll-view scroll-y class="picker-list">
+        <view class="pitem" wx:for="{{pickerList}}" wx:key="id"
+              data-id="{{item.id}}" bindtap="onPickExercise">
+          <text>{{item.name}}</text>
+        </view>
+        <view class="pempty" wx:if="{{!pickerList.length}}">没有匹配的动作</view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

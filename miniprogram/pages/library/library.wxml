@@ -6,13 +6,13 @@
   <view class="lib-body" wx:else>
     <!-- 固定头部 -->
     <view class="lib-sticky">
-      <scroll-view class="lib-tabs" scroll-x enable-flex>
+      <view class="lib-tabs">
         <view wx:for="{{CAT_KEYS}}" wx:key="this"
-              data-cat="{{item}}" bindtap="onCategoryTap"
-              style="flex:1;text-align:center;padding:8px 0;font-size:14px;font-weight:600;border-radius:8px;{{categoryTab === item ? 'background:#1f6feb;color:#fff' : 'background:transparent;color:#8b949e'}}">
+              class="lib-tab {{categoryTab === item ? 'lib-tab-active' : ''}}"
+              data-cat="{{item}}" bindtap="onCategoryTap">
           <text>{{CATEGORY_LABELS[item]}}</text>
         </view>
-      </scroll-view>
+      </view>
 
       <view class="lib-picker-trigger" bindtap="openMuscleList">
         <text>{{currentMuscleLabel}}</text>

@@ -359,7 +359,8 @@ def dashboard_data(request):
         SELECT COUNT(DISTINCT w.id) as workouts,
                COUNT(s.id) as sets,
                COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume_kg,
-               COALESCE(SUM(w.duration_min), 0) as duration_min,
+               COALESCE((SELECT SUM(duration_min) FROM workouts w2
+                         WHERE w2.owner = '{owner}'), 0) as duration_min,
                MIN(w.date) as first_date, MAX(w.date) as last_date
         FROM workouts w
         LEFT JOIN sets s ON s.workout_id = w.id

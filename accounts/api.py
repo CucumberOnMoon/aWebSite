@@ -343,6 +343,99 @@ def set_history(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def dashboard_data(request):
+    """一次返回训练 dashboard 所需的全部聚合数据（2026-11-05）。
+
+    结构：totals / by_type / monthly / prs / top_exercises / recent
+    只读，按 owner 过滤（GET 允许切换查看）。
+    """
+    owner = _owner(request)
+    try:
+        months = max(1, min(int(request.query_params.get('months') or 6), 36))
+    except (TypeError, ValueError):
+        months = 6
+
+    totals = _run_sql(f"""
+        SELECT COUNT(DISTINCT w.id) as workouts,
+               COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume_kg,
+               COALESCE(SUM(w.duration_min), 0) as duration_min,
+               MIN(w.date) as first_date, MAX(w.date) as last_date
+        FROM workouts w
+        LEFT JOIN sets s ON s.workout_id = w.id
+        WHERE w.owner = '{owner}'
+    """) or [{}]
+
+    by_type = _run_sql(f"""
+        SELECT w.type,
+               COUNT(DISTINCT w.id) as workouts,
+               COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume
+        FROM workouts w
+        LEFT JOIN sets s ON s.workout_id = w.id
+        WHERE w.owner = '{owner}'
+        GROUP BY w.type ORDER BY w.type
+    """) or []
+
+    monthly = _run_sql(f"""
+        SELECT substr(CAST(w.date AS VARCHAR), 1, 7) as month,
+               COUNT(DISTINCT w.id) as workouts,
+               COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume
+        FROM workouts w
+        LEFT JOIN sets s ON s.workout_id = w.id
+        WHERE w.owner = '{owner}'
+        GROUP BY 1 ORDER BY 1 DESC LIMIT {months}
+    """) or []
+    monthly = list(reversed(monthly))
+
+    prs = _run_sql(f"""
+        SELECT e.name as exercise, e.name_cn, s.weight_kg, s.reps, w.date
+        FROM sets s
+        JOIN workouts w ON s.workout_id = w.id
+        JOIN exercises e ON s.exercise_id = e.id
+        JOIN (SELECT exercise_id, MAX(weight_kg) as max_wt
+              FROM sets WHERE owner = '{owner}' GROUP BY exercise_id) m
+          ON s.exercise_id = m.exercise_id AND s.weight_kg = m.max_wt
+        WHERE s.owner = '{owner}'
+        ORDER BY s.weight_kg DESC LIMIT 20
+    """) or []
+
+    top_exercises = _run_sql(f"""
+        SELECT e.name as exercise, e.name_cn,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume
+        FROM sets s
+        JOIN workouts w ON s.workout_id = w.id
+        JOIN exercises e ON s.exercise_id = e.id
+        WHERE s.owner = '{owner}'
+        GROUP BY e.id, e.name ORDER BY volume DESC LIMIT 8
+    """) or []
+
+    recent = _run_sql(f"""
+        SELECT w.date, w.type,
+               COUNT(s.id) as sets,
+               COALESCE(ROUND(SUM(s.weight_kg * s.reps)), 0) as volume,
+               w.duration_min
+        FROM workouts w
+        LEFT JOIN sets s ON s.workout_id = w.id
+        WHERE w.owner = '{owner}'
+        GROUP BY w.id, w.date, w.type, w.duration_min
+        ORDER BY w.date DESC LIMIT 10
+    """) or []
+
+    return Response({
+        'owner': owner,
+        'totals': totals[0],
+        'by_type': by_type,
+        'monthly': monthly,
+        'prs': prs,
+        'top_exercises': top_exercises,
+        'recent': recent,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def stats_overview(request):
     """Aggregated stats: totals, per-category, per-exercise, progress."""
     # Total stats

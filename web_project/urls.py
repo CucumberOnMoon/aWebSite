@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/fitness/sets/', api.set_create, name='api_set_create'),
     path('api/fitness/sets/history/', api.set_history, name='api_set_history'),
     path('api/fitness/stats/', api.stats_overview, name='api_stats'),
+    path('api/fitness/dashboard/', api.dashboard_data, name='api_dashboard'),
     path('api/fitness/tiers/', api.tiers_status, name='api_tiers'),
     path('api/fitness/tiers/legend/', api.tiers_legend, name='api_tiers_legend'),
     path('api/fitness/bodyweight/', api.bodyweight_log, name='api_bodyweight'),

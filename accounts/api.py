@@ -391,15 +391,18 @@ def dashboard_data(request):
     monthly = list(reversed(monthly))
 
     prs = _run_sql(f"""
-        SELECT e.name as exercise, e.name_cn, s.weight_kg, s.reps, w.date
-        FROM sets s
-        JOIN workouts w ON s.workout_id = w.id
-        JOIN exercises e ON s.exercise_id = e.id
-        JOIN (SELECT exercise_id, MAX(weight_kg) as max_wt
-              FROM sets WHERE owner = '{owner}' GROUP BY exercise_id) m
-          ON s.exercise_id = m.exercise_id AND s.weight_kg = m.max_wt
-        WHERE s.owner = '{owner}'
-        ORDER BY s.weight_kg DESC LIMIT 20
+        SELECT * FROM (
+            SELECT e.name as exercise, e.name_cn, s.weight_kg, s.reps, w.date,
+                   ROW_NUMBER() OVER (PARTITION BY s.exercise_id ORDER BY w.date DESC) as rn
+            FROM sets s
+            JOIN workouts w ON s.workout_id = w.id
+            JOIN exercises e ON s.exercise_id = e.id
+            JOIN (SELECT exercise_id, MAX(weight_kg) as max_wt
+                  FROM sets WHERE owner = '{owner}' GROUP BY exercise_id) m
+              ON s.exercise_id = m.exercise_id AND s.weight_kg = m.max_wt
+            WHERE s.owner = '{owner}'
+        ) WHERE rn = 1
+        ORDER BY weight_kg DESC LIMIT 20
     """) or []
 
     top_exercises = _run_sql(f"""
@@ -409,7 +412,7 @@ def dashboard_data(request):
         JOIN workouts w ON s.workout_id = w.id
         JOIN exercises e ON s.exercise_id = e.id
         WHERE s.owner = '{owner}'
-        GROUP BY e.id, e.name ORDER BY volume DESC LIMIT 8
+        GROUP BY e.id, e.name, e.name_cn ORDER BY volume DESC LIMIT 8
     """) or []
 
     recent = _run_sql(f"""

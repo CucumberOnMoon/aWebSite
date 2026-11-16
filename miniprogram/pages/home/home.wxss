@@ -134,6 +134,16 @@
 .cal-Pull { background: #d2992233 !important; color: #d29922 !important; }
 .cal-Legs { background: #3fb95033 !important; color: #3fb950 !important; }
 .cal-today { border: 1px solid #58a6ff; }
+/* 未来日期：淡色 + 循环圆点 */
+.cal-future { color: #6e7681; position: relative; }
+.cal-future .cal-dot { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; }
+.cal-dot-Push { background: #f85149; }
+.cal-dot-Pull { background: #d29922; }
+.cal-dot-Legs { background: #3fb950; }
+.cal-dot-Rest { background: transparent; border: 1px solid #484f58; box-sizing: border-box; }
+.cal-plan-hint { font-size: 11px; color: #8b949e; display: block; margin: -6px 0 10px; }
+.cal-plan-target { font-size: 11px; color: #8b949e; }
+.cal-plan-row { display: flex; align-items: center; justify-content: space-between; }
 
 /* ⑥ 推拉腿分布 */
 .pie-legend { margin-top: 4px; }

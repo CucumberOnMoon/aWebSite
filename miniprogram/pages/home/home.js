@@ -48,6 +48,7 @@ Page({
     // 综合段位（6 项平均值取整，后端原序不重排）
     overallTier: null,
     calPopup: null, calPopupData: null,
+    calPlanPopup: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
     appVersion: '2.5.7',
@@ -162,7 +163,17 @@ Page({
     this.setData({ loading: true })
     try {
       // 一次请求拿齐（后端 /api/fitness/home/ 已合并 stats/workouts/compound/last/tiers）
-      const home = await api.getHome({ limit: 200 })
+      const [home, cycleRes, planRes] = await Promise.all([
+        api.getHome({ limit: 200 }),
+        api.getCycle(200).catch(() => null),
+        api.getPlan().catch(() => null),
+      ])
+      const _cycleMap = {}
+      for (const c of ((cycleRes && cycleRes.days) || [])) _cycleMap[c.date] = c
+      this._cycleMap = _cycleMap
+      const _planByDow = {}
+      for (const pp of ((planRes && planRes.days) || [])) _planByDow[pp.dow] = pp
+      this._planByDow = _planByDow
       const stats = (home && home.stats) || {}
       const allWorkouts = (home && home.workouts) || []
       const compoundData = (home && home.compound) || {}
@@ -371,12 +382,19 @@ Page({
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
       const w = workoutByDate[dateStr]
+      const cyc = (this._cycleMap || {})[dateStr]
+      const isFuture = dateStr > todayLocal
       grid.push({
         day: d, date: dateStr,
         hasWorkout: !!w,
         isToday: dateStr === todayLocal,
         wtype: w ? w.type : '',
         wid: w ? w.id : null,
+        isFuture: isFuture,
+        planLabel: (isFuture && cyc && !cyc.rest) ? cyc.label : '',
+        planType: (isFuture && cyc) ? (cyc.type || 'Rest') : '',
+        planDow: (isFuture && cyc && cyc.dow !== null && cyc.dow !== undefined) ? cyc.dow : null,
+        isRest: !!(isFuture && cyc && cyc.rest),
       })
     }
     return { grid, months: [monthLabel], year, month }
@@ -570,9 +588,25 @@ Page({
   },
 
   async onCalDayTap(e) {
-    const wid = e.currentTarget.dataset.wid
-    const wtype = e.currentTarget.dataset.wtype || ''
-    if (!wid) return
+    const ds = e.currentTarget.dataset
+    const wid = ds.wid
+    const wtype = ds.wtype || ''
+    if (!wid) {
+      // 未来日期：显示当天循环计划
+      if (ds.future && ds.label) {
+        const plan = (this._planByDow || {})[ds.dow]
+        this.setData({
+          calPlanPopup: {
+            date: ds.date,
+            label: ds.label,
+            items: (plan && plan.items) || [],
+          },
+          calPopup: null,
+          calPopupData: null,
+        })
+      }
+      return
+    }
     this.setData({ calPopup: { type: wtype }, calPopupData: null })
     try {
       const data = await api.getWorkoutSets(wid)
@@ -595,6 +629,10 @@ Page({
     } catch (_) {
       this.setData({ calPopup: null, calPopupData: null })
     }
+  },
+
+  dismissCalPlanPopup() {
+    this.setData({ calPlanPopup: null })
   },
 
   dismissCalPopup() {

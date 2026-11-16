@@ -281,6 +281,9 @@ def set_create(request):
         weight = item.get('weight_kg')
         reps = item.get('reps')
         rpe = item.get('rpe')
+        note = item.get('note')          # 2026-11-09 补：原来 INSERT 里根本没 note 列 →
+                                         # 客户端传 note='热身' 全被丢掉，DB 里一律 NULL，
+                                         # 导致 plan.py/closeout.py 的「排除热身」判据失效
 
         if not all([workout_id, exercise_id, set_number is not None]):
             return Response({'error': 'workout_id, exercise_id, set_number 必填'}, status=400)
@@ -288,11 +291,12 @@ def set_create(request):
         weight_sql = weight if weight is not None else "NULL"
         reps_sql = reps if reps is not None else "NULL"
         rpe_sql = f", {rpe}" if rpe is not None else ", NULL"
+        note_sql = (f", '{str(note).replace(chr(39), chr(39) + chr(39))}'" if note else ", NULL")
 
         sql = f"""\
-            INSERT INTO sets (id, workout_id, exercise_id, set_number, weight_kg, reps, rpe, owner)
+            INSERT INTO sets (id, workout_id, exercise_id, set_number, weight_kg, reps, rpe, note, owner)
             VALUES (nextval('seq_set_id'), {workout_id}, {exercise_id}, {set_number},
-                    {weight_sql}, {reps_sql}{rpe_sql}, '{_owner(request)}')
+                    {weight_sql}, {reps_sql}{rpe_sql}{note_sql}, '{_owner(request)}')
             RETURNING id
         """
         raw = _run_workout_query(sql)
@@ -1000,6 +1004,42 @@ def _str(v):
         return None
     s = str(v).strip()
     return None if (s == '' or s.upper() == 'NULL') else s
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def cycle_status(request):
+    """8 天循环排期（2026-11-16 起：推1→拉1→腿1→休→推2→拉2→腿2→休）。
+
+    数据源 /root/data/workout.db 的 cycle_schedule 表（预生成，到 2029-12-31）。
+    客户端 / 其它机器**直接查这个端点或读表即可，不要自己算循环**。
+    参数 days 可选，默认 30，最大 400。
+    """
+    try:
+        days = int(request.GET.get('days', 30))
+    except (TypeError, ValueError):
+        days = 30
+    days = max(1, min(days, 400))
+    sql = f"""
+        SELECT date, idx, dow, type, label, rest
+        FROM cycle_schedule
+        WHERE date >= CURRENT_DATE
+        ORDER BY date
+        LIMIT {days}
+    """
+    rows = _run_sql(sql) or []
+    out = []
+    for r in rows:
+        dow = _num(r.get('dow'))
+        out.append({
+            'date': str(r.get('date')),
+            'index': int(_num(r.get('idx')) or 0) + 1,
+            'dow': (int(dow) if dow is not None else None),
+            'type': _str(r.get('type')),
+            'label': _str(r.get('label')),
+            'rest': str(r.get('rest')).lower() in ('true', '1', 't'),
+        })
+    return Response({'count': len(out), 'today': (out[0] if out else None), 'days': out})
 
 
 @api_view(['GET'])

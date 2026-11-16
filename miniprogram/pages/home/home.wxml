@@ -169,9 +169,13 @@
         </view>
         <view class="cal-grid">
           <view wx:for="{{calGrid}}" wx:key="day"
-                class="cal-cell {{item.empty ? 'cal-empty' : ''}} {{item.hasWorkout ? 'cal-done' : ''}} {{item.isToday ? 'cal-today' : ''}} cal-{{item.wtype}}"
-                data-wid="{{item.wid}}" data-wtype="{{item.wtype}}" bindtap="onCalDayTap">
+                class="cal-cell {{item.empty ? 'cal-empty' : ''}} {{item.hasWorkout ? 'cal-done' : ''}} {{item.isToday ? 'cal-today' : ''}} {{item.isFuture ? 'cal-future' : ''}} {{item.planType ? 'cal-plan-' + item.planType : ''}} cal-{{item.wtype}}"
+                data-wid="{{item.wid}}" data-wtype="{{item.wtype}}"
+                data-date="{{item.date}}" data-future="{{item.isFuture}}"
+                data-dow="{{item.planDow}}" data-label="{{item.planLabel}}"
+                bindtap="onCalDayTap">
             <text wx:if="{{!item.empty}}">{{item.day}}</text>
+            <view wx:if="{{item.planType}}" class="cal-dot cal-dot-{{item.planType}}"></view>
           </view>
         </view>
         </view>
@@ -205,6 +209,22 @@
           </block>
           <text wx:else class="ex-popup-text">{{exDetailData.notes || '暂无数据'}}</text>
           <text class="ex-popup-close" bindtap="dismissExDetail">关闭</text>
+        </view>
+      </view>
+
+      <!-- 未来训练计划弹窗 -->
+      <view class="cal-overlay" wx:if="{{calPlanPopup}}" catchtap="dismissCalPlanPopup">
+        <view class="cal-popup" catchtap="{{''}}">
+          <text class="cal-popup-title">{{calPlanPopup.date}} · {{calPlanPopup.label}}</text>
+          <text class="cal-plan-hint">{{calPlanPopup.items.length}} 个动作</text>
+          <view class="cal-popup-ex" wx:for="{{calPlanPopup.items}}" wx:key="exercise_id">
+            <view class="cal-plan-row">
+              <text class="ex-title">{{item.exercise_name}}</text>
+              <text class="cal-plan-target">{{item.target_sets}} × {{item.target_reps}}</text>
+            </view>
+          </view>
+          <text wx:if="{{!calPlanPopup.items.length}}" class="ex-popup-text">这天还没有配置动作</text>
+          <text class="cal-popup-close" bindtap="dismissCalPlanPopup">关闭</text>
         </view>
       </view>
 

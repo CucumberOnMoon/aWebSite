@@ -94,6 +94,10 @@ function savePlan(dow, type, items) {
 function deletePlan(dow) {
   return request('DELETE', '/api/fitness/plan/?dow=' + encodeURIComponent(dow) + '&_t=' + Date.now())
 }
+// 8 天循环排期（服务端 cycle_schedule 表，2026-11-16 起，锚点=推1）
+function getCycle(days) {
+  return request('GET', '/api/fitness/cycle/', { days: days || 40 })
+}
 
 // 统计 & 训练
 function getStats() { return request('GET', '/api/fitness/stats/') }
@@ -138,7 +142,7 @@ module.exports = {
   MAIN_OWNER,
   setCurrentUser, getCurrentUser, setOpenid, getOpenid,
   getUsers, getUnbound, wechatLogin, wechatBind,
-  getPlan, savePlan, deletePlan,
+  getPlan, savePlan, deletePlan, getCycle,
   getStats, getTiers, getTiersLegend, getExercises, getHome,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
   getSetHistory, getWorkoutSets, getExerciseGif, getExerciseDetail, timerNotify

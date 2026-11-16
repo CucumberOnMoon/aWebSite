@@ -51,7 +51,7 @@ Page({
     calPlanPopup: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.5.9',
+    appVersion: '2.6.0',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -165,7 +165,7 @@ Page({
       // 一次请求拿齐（后端 /api/fitness/home/ 已合并 stats/workouts/compound/last/tiers）
       const [home, cycleRes, planRes] = await Promise.all([
         api.getHome({ limit: 200 }),
-        api.getCycle(200).catch(() => null),
+        api.getCycle(60).catch(() => null),
         api.getPlan().catch(() => null),
       ])
       const _cycleMap = {}
@@ -400,18 +400,37 @@ Page({
     return { grid, months: [monthLabel], year, month }
   },
 
-  onCalPrevMonth() {
+  // 按需补拉某个月的循环排期（只拉未来；翻月时调）
+  async ensureCycleMonth(year, month) {
+    const pad = n => String(n).padStart(2, '0')
+    const first = `${year}-${pad(month + 1)}-01`
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const last = `${year}-${pad(month + 1)}-${pad(lastDay)}`
+    const d = new Date()
+    const todayStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    if (last < todayStr) return              // 过去的月份不用标记
+    try {
+      const res = await api.getCycleRange(first, last)
+      const map = this._cycleMap || {}
+      for (const c of ((res && res.days) || [])) map[c.date] = c
+      this._cycleMap = map
+    } catch (e) { /* 静默：翻月失败不影响日历其它信息 */ }
+  },
+
+  async onCalPrevMonth() {
     let y = this.data.calYear, m = this.data.calMonth
     m--
     if (m < 0) { m = 11; y-- }
+    await this.ensureCycleMonth(y, m)
     const calData = this.buildCalendar(null, y, m)
     this.setData({ calGrid: calData.grid, calMonths: calData.months, calYear: calData.year, calMonth: calData.month })
   },
 
-  onCalNextMonth() {
+  async onCalNextMonth() {
     let y = this.data.calYear, m = this.data.calMonth
     m++
     if (m > 11) { m = 0; y++ }
+    await this.ensureCycleMonth(y, m)
     const calData = this.buildCalendar(null, y, m)
     this.setData({ calGrid: calData.grid, calMonths: calData.months, calYear: calData.year, calMonth: calData.month })
   },

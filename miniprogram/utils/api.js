@@ -99,6 +99,11 @@ function getCycle(days) {
   return request('GET', '/api/fitness/cycle/', { days: days || 40 })
 }
 
+// 按日期范围取循环排期（只返回未来；适合日历翻月时按需拉一个月）
+function getCycleRange(from, to) {
+  return request('GET', '/api/fitness/cycle/', { from: from, to: to })
+}
+
 // 统计 & 训练
 function getStats() { return request('GET', '/api/fitness/stats/') }
 function getTiers() { return request('GET', '/api/fitness/tiers/') }
@@ -142,7 +147,7 @@ module.exports = {
   MAIN_OWNER,
   setCurrentUser, getCurrentUser, setOpenid, getOpenid,
   getUsers, getUnbound, wechatLogin, wechatBind,
-  getPlan, savePlan, deletePlan, getCycle,
+  getPlan, savePlan, deletePlan, getCycle, getCycleRange,
   getStats, getTiers, getTiersLegend, getExercises, getHome,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
   getSetHistory, getWorkoutSets, getExerciseGif, getExerciseDetail, timerNotify

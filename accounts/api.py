@@ -1013,20 +1013,51 @@ def cycle_status(request):
 
     数据源 /root/data/workout.db 的 cycle_schedule 表（预生成，到 2029-12-31）。
     客户端 / 其它机器**直接查这个端点或读表即可，不要自己算循环**。
-    参数 days 可选，默认 30，最大 400。
+
+    **只返回未来**（date >= 今天），过去的日历不需要标记。
+    参数：
+      days=30            从今天起往后 N 天（默认 30，上限 1200）
+      from=2027-06-01    起始日（默认今天）；配合 to 用可精确取某个月
+      to=2027-06-30      结束日（可选）
     """
-    try:
-        days = int(request.GET.get('days', 30))
-    except (TypeError, ValueError):
-        days = 30
-    days = max(1, min(days, 400))
-    sql = f"""
-        SELECT date, idx, dow, type, label, rest
-        FROM cycle_schedule
-        WHERE date >= CURRENT_DATE
-        ORDER BY date
-        LIMIT {days}
-    """
+    today = datetime.date.today()
+
+    def _parse(key):
+        v = (request.GET.get(key) or '').strip()
+        if not v:
+            return None
+        try:
+            return datetime.date.fromisoformat(v)
+        except ValueError:
+            return None
+
+    start = _parse('from') or today
+    if start < today:          # 过往不标记
+        start = today
+    end = _parse('to')
+
+    if end:
+        if end < start:
+            end = start
+        sql = f"""
+            SELECT date, idx, dow, type, label, rest
+            FROM cycle_schedule
+            WHERE date >= DATE '{start.isoformat()}' AND date <= DATE '{end.isoformat()}'
+            ORDER BY date
+        """
+    else:
+        try:
+            days = int(request.GET.get('days', 30))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(1, min(days, 1200))
+        sql = f"""
+            SELECT date, idx, dow, type, label, rest
+            FROM cycle_schedule
+            WHERE date >= DATE '{start.isoformat()}'
+            ORDER BY date
+            LIMIT {days}
+        """
     rows = _run_sql(sql) or []
     out = []
     for r in rows:

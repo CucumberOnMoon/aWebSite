@@ -175,7 +175,7 @@
                 data-dow="{{item.planDow}}" data-label="{{item.planLabel}}"
                 bindtap="onCalDayTap">
             <text wx:if="{{!item.empty}}">{{item.day}}</text>
-            <view wx:if="{{item.planType}}" class="cal-dot cal-dot-{{item.planType}}"></view>
+            <text wx:if="{{item.planLabel}}" class="cal-plan-tag cal-tag-{{item.planType}}">{{item.planLabel}}</text>
           </view>
         </view>
         </view>

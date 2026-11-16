@@ -51,7 +51,7 @@ Page({
     calPlanPopup: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.5.8',
+    appVersion: '2.5.9',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -391,7 +391,7 @@ Page({
         wtype: w ? w.type : '',
         wid: w ? w.id : null,
         isFuture: isFuture,
-        planLabel: (isFuture && cyc && !cyc.rest) ? cyc.label : '',
+        planLabel: (isFuture && cyc) ? cyc.label : '',
         planType: (isFuture && cyc) ? (cyc.type || 'Rest') : '',
         planDow: (isFuture && cyc && cyc.dow !== null && cyc.dow !== undefined) ? cyc.dow : null,
         isRest: !!(isFuture && cyc && cyc.rest),

@@ -136,11 +136,12 @@
 .cal-today { border: 1px solid #58a6ff; }
 /* 未来日期：淡色 + 循环圆点 */
 .cal-future { color: #6e7681; position: relative; }
-.cal-future .cal-dot { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; }
-.cal-dot-Push { background: #f85149; }
-.cal-dot-Pull { background: #d29922; }
-.cal-dot-Legs { background: #3fb950; }
-.cal-dot-Rest { background: transparent; border: 1px solid #484f58; box-sizing: border-box; }
+.cal-future > text:first-child { transform: translateY(-3px); }
+.cal-plan-tag { position: absolute; right: 3px; bottom: 1px; font-size: 7px; line-height: 1.1; font-weight: 500; transform: scale(0.95); transform-origin: right bottom; }
+.cal-tag-Push { color: #f85149; }
+.cal-tag-Pull { color: #d29922; }
+.cal-tag-Legs { color: #3fb950; }
+.cal-tag-Rest { color: #6e7681; }
 .cal-plan-hint { font-size: 11px; color: #8b949e; display: block; margin: -6px 0 10px; }
 .cal-plan-target { font-size: 11px; color: #8b949e; }
 .cal-plan-row { display: flex; align-items: center; justify-content: space-between; }

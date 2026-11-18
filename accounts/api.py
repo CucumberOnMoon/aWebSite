@@ -1307,14 +1307,16 @@ def bodyweight_log(request):
 
 
 # ── body measurements（围度记录）──────────────────────────────────────
-MEASURE_FIELDS = ('waist_cm', 'hip_cm', 'thigh_cm', 'calf_cm', 'arm_cm', 'chest_cm')
+MEASURE_FIELDS = ('shoulder_cm', 'chest_cm', 'waist_cm', 'hip_cm',
+                  'thigh_cm', 'calf_cm', 'arm_cm')
 
 # 健美「黄金比例」：围度 ÷ 身高。男女分开。
 # 来源：Steve Reeves 经典比例 + 训练者实践值，用于给围度分档。
+# shoulder_cm 按「肩围 ≈ 胸围 × 1.10-1.15」折算（肩围无经典 Reeves 值，取胸围系数 ×1.12）
 MEASURE_RATIO = {
-    'M': {'chest_cm': 0.65, 'waist_cm': 0.45, 'hip_cm': 0.55,
+    'M': {'shoulder_cm': 0.73, 'chest_cm': 0.65, 'waist_cm': 0.45, 'hip_cm': 0.55,
           'thigh_cm': 0.38, 'calf_cm': 0.25, 'arm_cm': 0.22},
-    'F': {'chest_cm': 0.60, 'waist_cm': 0.42, 'hip_cm': 0.58,
+    'F': {'shoulder_cm': 0.67, 'chest_cm': 0.60, 'waist_cm': 0.42, 'hip_cm': 0.58,
           'thigh_cm': 0.40, 'calf_cm': 0.24, 'arm_cm': 0.20},
 }
 # 腰围越小越好，比值取倒数
@@ -1361,11 +1363,20 @@ def _derive_measures(rec, height_cm):
     t = rec.get('thigh_cm')
     c = rec.get('calf_cm')
     a = rec.get('arm_cm')
+    ch = rec.get('chest_cm')
+    sh = rec.get('shoulder_cm')
+    hp = rec.get('hip_cm')
     return {
         'waist_height_ratio': (round(w / height_cm, 3) if (w and height_cm) else None),
         'thigh_waist_diff': (round(t - w, 1) if (t is not None and w is not None) else None),
         'thigh_calf_diff': (round(t - c, 1) if (t is not None and c is not None) else None),
         'arm_thigh_ratio': (round(a / t, 3) if (a and t) else None),
+        # 肩胸比：1.05-1.15 正常，>1.15 肩背发达
+        'shoulder_chest_ratio': (round(sh / ch, 3) if (sh and ch) else None),
+        # 肩腰比：>1.30 倒三角明显
+        'shoulder_waist_ratio': (round(sh / w, 3) if (sh and w) else None),
+        # 腰臀比：男 <0.90 健康
+        'waist_hip_ratio': (round(w / hp, 3) if (w and hp) else None),
     }
 
 
@@ -1396,7 +1407,8 @@ def measurements(request):
 
     if request.method == 'GET':
         sql = f"""
-            SELECT date, waist_cm, hip_cm, thigh_cm, calf_cm, arm_cm, chest_cm, note
+            SELECT date, shoulder_cm, chest_cm, waist_cm, hip_cm,
+                   thigh_cm, calf_cm, arm_cm, note
             FROM body_measurements WHERE owner = '{owner}' ORDER BY date
         """
         rows = _run_sql(sql) or []

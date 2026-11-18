@@ -14,10 +14,10 @@ const FIELDS = [
 // 派生比值（服务端算好，这里只排版）
 const RATIOS = [
   { key: 'shoulder_chest_ratio', label: '肩 / 胸', ref: '1.05–1.15 正常' },
-  { key: 'shoulder_waist_ratio', label: '肩 / 腰', ref: '>1.30 倒三角' },
-  { key: 'waist_hip_ratio', label: '腰 / 臀', ref: '<0.90 健康' },
-  { key: 'waist_height_ratio', label: '腰 / 身高', ref: '<0.50 健康' },
-  { key: 'thigh_waist_diff', label: '大腿 − 腰', ref: '>15 下肢占优' },
+  { key: 'shoulder_waist_ratio', label: '肩 / 腰', ref: '＞1.30 倒三角' },
+  { key: 'waist_hip_ratio', label: '腰 / 臀', ref: '＜0.90 健康' },
+  { key: 'waist_height_ratio', label: '腰 / 身高', ref: '＜0.50 健康' },
+  { key: 'thigh_waist_diff', label: '大腿 − 腰', ref: '＞15 下肢占优' },
   { key: 'thigh_calf_diff', label: '大腿 − 小腿', ref: '18–22 正常' },
   { key: 'arm_thigh_ratio', label: '臂 / 腿', ref: '0.58–0.62 正常' },
 ]

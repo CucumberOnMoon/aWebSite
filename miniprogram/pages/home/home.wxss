@@ -300,6 +300,9 @@
 .tp-rest, .tp-empty { font-size: 14px; color: #8b949e; }
 .tp-link { font-size: 14px; color: #58a6ff; }
 
+/* 力量段位雷达 */
+.radar-canvas { width: 100%; height: 260px; display: block; }
+
 /* 身体围度入口 */
 .measure-entry {
   display: flex; align-items: center; justify-content: space-between;

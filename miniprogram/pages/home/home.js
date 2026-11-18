@@ -7,6 +7,13 @@ const EX_COLORS = ['#58a6ff', '#bc8cff', '#39d2c0', '#f5c342', '#f85149', '#3fb9
 
 const COMPOUND_NAMES = ['杠铃深蹲', '杠铃卧推', '罗马尼亚硬拉', '硬拉', '助力引体向上', '高位下拉', '低位划船']
 
+// 雷达图轴标签（动作名 → 短名）
+const RADAR_SHORT = {
+  '杠铃深蹲': '深蹲', '低位划船': '划船', '杠铃卧推': '卧推',
+  '杠铃上斜卧推': '上斜', '高位下拉': '下拉', '引体向上': '引体',
+  '罗马尼亚硬拉': '硬拉', '硬拉': '硬拉', '助力引体向上': '引体',
+}
+
 // 8 档段位（低→高），与后端命名一致。仅用于展示聚合，阈值不在前端
 const TIER_NAMES = ['倔强青铜', '秩序白银', '荣耀黄金', '尊贵铂金', '永恒钻石', '至尊星耀', '最强王者', '荣耀王者']
 const TIER_STYLE = {
@@ -35,6 +42,7 @@ Page({
     totals: {},
     strengthLifts: [],
     weeklyVolumes: [],
+    radarData: [],
     calGrid: [], calMonths: [],
     catBars: [],
     lastWorkout: null,
@@ -51,7 +59,7 @@ Page({
     calPlanPopup: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.7.4',
+    appVersion: '2.7.5',
     // Timer
     timerActive: false,
     timerRemaining: 0,
@@ -216,6 +224,15 @@ Page({
         overallTier = this.buildOverallTier(tierRes.results)
       }
 
+      // 力量段位雷达：6 项主项，值 = tier_index（0-7）
+      const radarData = ((tierRes && tierRes.results) || []).map(r => ({
+        name: r.lift,
+        short: RADAR_SHORT[r.lift] || String(r.lift || '').slice(0, 3),
+        value: Number(r.tier_index) || 0,
+        tier: r.tier,
+        color: (TIER_STYLE[r.tier] || {}).color || '#58a6ff',
+      }))
+
       if (lastWorkout) {
         this._workoutCache = { 0: { data: lastWorkout, str: lastWorkoutStr } }
       }
@@ -225,10 +242,10 @@ Page({
         totals, strengthLifts, strengthDisplayLifts, weeklyVolumes,
         calGrid: calData.grid, calMonths: calData.months,
         calYear: calData.year, calMonth: calData.month,
-        catBars, highlights, lastWorkout, lastWorkoutStr, overallTier,
+        catBars, highlights, lastWorkout, lastWorkoutStr, overallTier, radarData,
         lastWorkoutOffset: 0, lastWorkoutMore: true,
         strengthChartFailed: !strengthLifts.length,
-      })
+      }, () => this.drawRadar())
     } catch (e) {
       console.error('loadAll失败:', e)
       this.setData({ loading: false, hasData: false })
@@ -238,6 +255,89 @@ Page({
 
   // 身体围度（独立页）
   goBody() { wx.navigateTo({ url: '/pages/body/body' }) },
+
+  // ── 力量段位雷达图（canvas 2d）────────────────────────
+  drawRadar() {
+    const data = this.data.radarData || []
+    if (data.length < 3) return
+    wx.createSelectorQuery().in(this).select('#radarCanvas')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        const r = res && res[0]
+        if (!r || !r.node) return
+        const canvas = r.node
+        const ctx = canvas.getContext('2d')
+        const dpr = (wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2) || 2
+        const W = r.width
+        const H = r.height
+        canvas.width = W * dpr
+        canvas.height = H * dpr
+        ctx.scale(dpr, dpr)
+        ctx.clearRect(0, 0, W, H)
+
+        const cx = W / 2
+        const cy = H / 2
+        const R = Math.min(W, H) / 2 - 30
+        const n = data.length
+        const MAX = 7
+        const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n
+        const pt = (i, ratio) => [
+          cx + Math.cos(ang(i)) * R * ratio,
+          cy + Math.sin(ang(i)) * R * ratio,
+        ]
+
+        // 网格（4 层）
+        ctx.strokeStyle = '#30363d'
+        ctx.lineWidth = 1
+        for (let ring = 1; ring <= 4; ring++) {
+          ctx.beginPath()
+          for (let i = 0; i < n; i++) {
+            const [x, y] = pt(i, ring / 4)
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.closePath()
+          ctx.stroke()
+        }
+        // 轴线
+        for (let i = 0; i < n; i++) {
+          const [x, y] = pt(i, 1)
+          ctx.beginPath()
+          ctx.moveTo(cx, cy)
+          ctx.lineTo(x, y)
+          ctx.stroke()
+        }
+        // 数据多边形
+        ctx.beginPath()
+        data.forEach((d, i) => {
+          const [x, y] = pt(i, Math.max(0.05, d.value / MAX))
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        })
+        ctx.closePath()
+        ctx.fillStyle = 'rgba(88,166,255,0.22)'
+        ctx.fill()
+        ctx.strokeStyle = '#58a6ff'
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        // 数据点 + 轴标签
+        ctx.font = '10px sans-serif'
+        data.forEach((d, i) => {
+          const [x, y] = pt(i, Math.max(0.05, d.value / MAX))
+          ctx.beginPath()
+          ctx.arc(x, y, 3, 0, Math.PI * 2)
+          ctx.fillStyle = d.color || '#58a6ff'
+          ctx.fill()
+
+          const [lx, ly] = pt(i, 1.17)
+          ctx.fillStyle = '#8b949e'
+          ctx.textAlign = Math.abs(lx - cx) < 3 ? 'center' : (lx > cx ? 'left' : 'right')
+          ctx.textBaseline = 'middle'
+          ctx.fillText(d.short, lx, ly)
+        })
+      })
+  },
 
   async fetchCompoundHistory() {
     const map = {}

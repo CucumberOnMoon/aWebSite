@@ -150,16 +150,10 @@
         <view class="retry-btn">点击重试</view>
       </view>
 
-      <!-- ⑥ 周训练量 -->
-      <view class="card" wx:if="{{weeklyVolumes.length}}">
-        <text class="card-title">📊 周训练量 <text class="card-sub">近12周</text></text>
-        <view class="bar-chart-h">
-          <view class="bar-row-h" wx:for="{{weeklyVolumes}}" wx:key="label">
-            <text class="bar-label-h">{{item.label}}</text>
-            <view class="bar-track-h"><view class="bar-fill-h" style="width:{{item.pct}}%"></view></view>
-            <text class="bar-val-h">{{item.volK}}k</text>
-          </view>
-        </view>
+      <!-- ⑥ 力量段位雷达 -->
+      <view class="card" wx:if="{{radarData.length}}">
+        <text class="card-title">🕸️ 力量段位 <text class="card-sub">6 项主项 · 越靠外越强</text></text>
+        <canvas type="2d" id="radarCanvas" class="radar-canvas"></canvas>
       </view>
 
       <!-- ⑦ 训练频率 -->

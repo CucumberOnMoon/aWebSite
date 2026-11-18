@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/fitness/tiers/', api.tiers_status, name='api_tiers'),
     path('api/fitness/tiers/legend/', api.tiers_legend, name='api_tiers_legend'),
     path('api/fitness/bodyweight/', api.bodyweight_log, name='api_bodyweight'),
+    path('api/fitness/measurements/', api.measurements, name='api_measurements'),
     path('api/fitness/plan/', api.plan_detail, name='api_plan'),
     path('api/fitness/cycle/', api.cycle_status, name='api_cycle'),
     path('api/fitness/cycle/info/', api.cycle_detail, name='api_cycle_detail'),

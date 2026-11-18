@@ -1306,6 +1306,105 @@ def bodyweight_log(request):
     return Response({'status': 'created', 'owner': owner, 'date': day, 'kg': kg}, status=201)
 
 
+# ── body measurements（围度记录）──────────────────────────────────────
+MEASURE_FIELDS = ('waist_cm', 'hip_cm', 'thigh_cm', 'calf_cm', 'arm_cm', 'chest_cm')
+
+
+def _derive_measures(rec, height_cm):
+    """派生字段：服务端算好，前端直接用（口径统一）。"""
+    w = rec.get('waist_cm')
+    t = rec.get('thigh_cm')
+    c = rec.get('calf_cm')
+    a = rec.get('arm_cm')
+    return {
+        'waist_height_ratio': (round(w / height_cm, 3) if (w and height_cm) else None),
+        'thigh_waist_diff': (round(t - w, 1) if (t is not None and w is not None) else None),
+        'thigh_calf_diff': (round(t - c, 1) if (t is not None and c is not None) else None),
+        'arm_thigh_ratio': (round(a / t, 3) if (a and t) else None),
+    }
+
+
+def measurements(request):
+    """身体围度记录。
+
+    GET  /api/fitness/measurements/?owner=xxx   → 全部记录（日期升序）+ 最新一条
+    POST /api/fitness/measurements/              → 记一条
+
+    主键 (owner, date)，同一天重复提交覆盖（DELETE + INSERT）。
+    没量的部位存 NULL，前端显示「待测」，不要变 0。
+    """
+    owner = _owner(request)
+
+    # 身高：users 表可能没有该列，兜底 168（尹海华）
+    height = None
+    try:
+        hrows = _run_sql(f"SELECT height_cm FROM users WHERE owner = '{owner}'") or []
+        height = _num(hrows[0].get('height_cm')) if hrows else None
+    except Exception:
+        height = None
+    if not height:
+        height = 168.0
+
+    if request.method == 'GET':
+        sql = f"""
+            SELECT date, waist_cm, hip_cm, thigh_cm, calf_cm, arm_cm, chest_cm, note
+            FROM body_measurements WHERE owner = '{owner}' ORDER BY date
+        """
+        rows = _run_sql(sql) or []
+        out = []
+        for r in rows:
+            rec = {'date': _str(r.get('date'))}
+            for f in MEASURE_FIELDS:
+                rec[f] = _num(r.get(f))
+            rec['note'] = _str(r.get('note'))
+            rec.update(_derive_measures(rec, height))
+            out.append(rec)
+        return Response({
+            'count': len(out),
+            'latest': (out[-1] if out else None),
+            'results': out,
+            'height_cm': height,
+        })
+
+    # POST
+    day = str(request.data.get('date') or datetime.date.today().isoformat())
+    try:
+        datetime.date.fromisoformat(day)
+    except ValueError:
+        return Response({'error': 'date 格式需 YYYY-MM-DD'}, status=400)
+
+    vals = {}
+    for f in MEASURE_FIELDS:
+        raw = request.data.get(f)
+        if raw is None or raw == '':
+            vals[f] = None
+            continue
+        try:
+            n = float(raw)
+        except (TypeError, ValueError):
+            return Response({'error': f'{f} 需为数字'}, status=400)
+        if not 20 <= n <= 150:
+            return Response({'error': f'{f} 需在 20–150 cm 之间'}, status=400)
+        vals[f] = n
+
+    note = _str(request.data.get('note'))
+    note_sql = "'" + note.replace("'", "''") + "'" if note else 'NULL'
+
+    _run_workout_query(
+        f"DELETE FROM body_measurements WHERE owner = '{owner}' AND date = DATE '{day}';"
+    )
+    cols = ', '.join(['owner', 'date'] + list(MEASURE_FIELDS) + ['note', 'created_at'])
+    values = ', '.join(
+        [f"'{owner}'", f"DATE '{day}'"]
+        + ['NULL' if vals[f] is None else repr(vals[f]) for f in MEASURE_FIELDS]
+        + [note_sql, 'now()']
+    )
+    _run_workout_query(
+        f"INSERT INTO body_measurements ({cols}) VALUES ({values})"
+    )
+    return Response({'status': 'created', 'owner': owner, 'date': day, **vals}, status=201)
+
+
 # ── training plan（按人、按星期几）────────────────────────────────────
 PLAN_TYPES = ('Push', 'Pull', 'Legs', 'Rest')
 

@@ -42,13 +42,12 @@
           <text class="hd-sub" wx:if="{{latest}}">上次记录 {{latest.date}} · 单位 cm</text>
           <text class="hd-sub" wx:else>还没有记录</text>
         </view>
-        <view class="add-btn" bindtap="openModal">＋ 记录</view>
       </view>
     </view>
 
     <view wx:if="{{!hasData}}" class="hint">
       <text>还没有围度数据</text>
-      <view class="retry-btn" bindtap="openModal">记录第一次</view>
+      <text class="hint-sub">在 QQ 里报给小黑记录</text>
     </view>
 
     <block wx:else>
@@ -116,24 +115,4 @@
       <view class="tip">二头屈臂用力 · 大腿站直放松 · 腰围自然呼气末</view>
     </block>
   </block>
-
-  <!-- 录入弹窗 -->
-  <view class="modal-overlay" wx:if="{{showModal}}" catchtap="closeModal">
-    <view class="modal-box" catchtap="noop">
-      <text class="modal-title">记录围度</text>
-      <view class="mf-row">
-        <text class="mf-label">日期</text>
-        <input class="mf-input" value="{{form.date}}" data-field="date" bindinput="onInput" placeholder="YYYY-MM-DD" />
-      </view>
-      <view class="mf-row" wx:for="{{fields}}" wx:key="key">
-        <text class="mf-label">{{item.label}}</text>
-        <input class="mf-input" type="digit" value="{{form[item.key]}}" data-field="{{item.key}}" bindinput="onInput" placeholder="{{item.hint}}" />
-      </view>
-      <text class="mf-tips">二头屈臂用力 · 大腿站直放松 · 腰围自然呼气末 · 单位 cm</text>
-      <view class="mf-actions">
-        <text class="mf-cancel" bindtap="closeModal">取消</text>
-        <text class="mf-save {{saving ? 'disabled' : ''}}" bindtap="save">保存</text>
-      </view>
-    </view>
-  </view>
 </scroll-view>

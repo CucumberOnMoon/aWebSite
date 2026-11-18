@@ -21,9 +21,6 @@ Page({
     fields: FIELDS,
     latest: null,
     history: [],
-    showModal: false,
-    form: {},
-    saving: false,
   },
 
   onShow() {
@@ -99,48 +96,4 @@ Page({
     this.load()
   },
 
-  // ── 录入弹窗 ────────────────────────────────
-  openModal() {
-    const m = this.data.latest || {}
-    const t = new Date()
-    const ds = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
-    const form = { date: ds }
-    FIELDS.forEach(f => { form[f.key] = m[f.key] ? String(m[f.key]) : '' })
-    this.setData({ showModal: true, form })
-  },
-
-  closeModal() { this.setData({ showModal: false }) },
-
-  onInput(e) {
-    const field = e.currentTarget.dataset.field
-    this.setData({ [`form.${field}`]: e.detail.value })
-  },
-
-  async save() {
-    const f = this.data.form
-    const payload = { date: f.date }
-    let filled = 0
-    FIELDS.forEach(x => {
-      if (f[x.key] !== '' && f[x.key] !== undefined) {
-        payload[x.key] = Number(f[x.key])
-        filled++
-      }
-    })
-    if (!payload.date) return wx.showToast({ title: '请填日期', icon: 'none' })
-    if (!filled) return wx.showToast({ title: '至少填一项', icon: 'none' })
-    if (this.data.saving) return
-    this.setData({ saving: true })
-    wx.showLoading({ title: '保存中' })
-    try {
-      await api.saveMeasurement(payload)
-      wx.hideLoading()
-      wx.showToast({ title: '已记录', icon: 'success' })
-      this.setData({ showModal: false, saving: false })
-      this.load()
-    } catch (e) {
-      wx.hideLoading()
-      this.setData({ saving: false })
-      wx.showToast({ title: (e && e.error) || '保存失败', icon: 'none' })
-    }
-  },
-})
+});

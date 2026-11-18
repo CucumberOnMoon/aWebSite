@@ -1324,6 +1324,8 @@ def _derive_measures(rec, height_cm):
     }
 
 
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
 def measurements(request):
     """身体围度记录。
 

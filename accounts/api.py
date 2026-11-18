@@ -1309,6 +1309,51 @@ def bodyweight_log(request):
 # ── body measurements（围度记录）──────────────────────────────────────
 MEASURE_FIELDS = ('waist_cm', 'hip_cm', 'thigh_cm', 'calf_cm', 'arm_cm', 'chest_cm')
 
+# 健美「黄金比例」：围度 ÷ 身高。男女分开。
+# 来源：Steve Reeves 经典比例 + 训练者实践值，用于给围度分档。
+MEASURE_RATIO = {
+    'M': {'chest_cm': 0.65, 'waist_cm': 0.45, 'hip_cm': 0.55,
+          'thigh_cm': 0.38, 'calf_cm': 0.25, 'arm_cm': 0.22},
+    'F': {'chest_cm': 0.60, 'waist_cm': 0.42, 'hip_cm': 0.58,
+          'thigh_cm': 0.40, 'calf_cm': 0.24, 'arm_cm': 0.20},
+}
+# 腰围越小越好，比值取倒数
+INVERSE_FIELDS = {'waist_cm'}
+
+MEASURE_TIER_NAMES = ['倔强青铜', '秩序白银', '荣耀黄金', '尊贵铂金',
+                      '永恒钻石', '至尊星耀', '最强王者', '荣耀王者']
+MEASURE_TIER_COLORS = ['#8b6b4a', '#a8b3b8', '#f5c342', '#7fd8e8',
+                       '#a78bfa', '#f778ba', '#ff7b72', '#ffb020']
+
+
+def _measure_tiers(rec, height_cm, sex):
+    """按「实际围度 ÷ 黄金比例目标」给每个部位定段位。
+
+    ratio < 0.85 青铜，之后每 0.05 升一档，≥1.15 荣耀王者。
+    """
+    ratios = MEASURE_RATIO.get((sex or 'M').upper()[:1], MEASURE_RATIO['M'])
+    thresholds = [0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15]
+    out = {}
+    for f in MEASURE_FIELDS:
+        coef = ratios.get(f)
+        v = rec.get(f)
+        if not coef or not v:
+            out[f] = None
+            continue
+        target = height_cm * coef
+        r = (target / v) if f in INVERSE_FIELDS else (v / target)
+        idx = 0
+        for i, t in enumerate(thresholds):
+            if r >= t:
+                idx = i + 1
+        out[f] = {
+            'name': MEASURE_TIER_NAMES[idx],
+            'color': MEASURE_TIER_COLORS[idx],
+            'ratio': round(r, 3),
+            'target_cm': round(target, 1),
+        }
+    return out
+
 
 def _derive_measures(rec, height_cm):
     """派生字段：服务端算好，前端直接用（口径统一）。"""
@@ -1337,13 +1382,15 @@ def measurements(request):
     """
     owner = _owner(request)
 
-    # 身高：users 表可能没有该列，兜底 168（尹海华）
-    height = None
+    # 身高/性别：users 表可能没有该列，兜底 168 / 男
+    height, sex = None, 'M'
     try:
-        hrows = _run_sql(f"SELECT height_cm FROM users WHERE owner = '{owner}'") or []
-        height = _num(hrows[0].get('height_cm')) if hrows else None
+        hrows = _run_sql(f"SELECT height_cm, sex FROM users WHERE owner = '{owner}'") or []
+        if hrows:
+            height = _num(hrows[0].get('height_cm'))
+            sex = _str(hrows[0].get('sex')) or 'M'
     except Exception:
-        height = None
+        pass
     if not height:
         height = 168.0
 
@@ -1360,6 +1407,7 @@ def measurements(request):
                 rec[f] = _num(r.get(f))
             rec['note'] = _str(r.get('note'))
             rec.update(_derive_measures(rec, height))
+            rec['tiers'] = _measure_tiers(rec, height, sex)
             out.append(rec)
         return Response({
             'count': len(out),

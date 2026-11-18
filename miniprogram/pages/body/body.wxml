@@ -1,0 +1,139 @@
+<scroll-view scroll-y class="page">
+  <!-- 用户选择器 -->
+  <view class="user-picker">
+    <view class="user-picker-left">
+      <text class="user-label">查看用户</text>
+    </view>
+    <view class="picker-box" bindtap="toggleUserList">
+      <text class="picker-text">{{selectedUser || '选择用户'}}</text>
+      <text class="picker-arrow">{{showUserList ? '▴' : '▾'}}</text>
+    </view>
+  </view>
+
+  <!-- 用户下拉 -->
+  <view class="ud-overlay" wx:if="{{showUserList}}" catchtap="closeUserList">
+    <view class="ud-panel" catchtap="noop">
+      <text class="ud-title">选择用户</text>
+      <scroll-view scroll-y class="ud-scroll">
+        <view class="ud-item {{item === selectedUser ? 'ud-cur' : ''}}"
+              wx:for="{{userList}}" wx:key="*this"
+              data-user="{{item}}" bindtap="onPickUser">
+          <text class="ud-name">{{item}}</text>
+          <text class="ud-check" wx:if="{{item === selectedUser}}">✓</text>
+        </view>
+      </scroll-view>
+      <text class="ud-close" bindtap="closeUserList">取消</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="hint">加载中...</view>
+
+  <view wx:elif="{{failed}}" class="hint">
+    <text>围度数据加载失败</text>
+    <view class="retry-btn" bindtap="load">点击重试</view>
+  </view>
+
+  <block wx:else>
+    <!-- 顶部 -->
+    <view class="hd">
+      <view class="hd-top">
+        <view>
+          <text class="hd-title">📏 身体围度</text>
+          <text class="hd-sub" wx:if="{{latest}}">上次记录 {{latest.date}} · 单位 cm</text>
+          <text class="hd-sub" wx:else>还没有记录</text>
+        </view>
+        <view class="add-btn" bindtap="openModal">＋ 记录</view>
+      </view>
+    </view>
+
+    <view wx:if="{{!hasData}}" class="hint">
+      <text>还没有围度数据</text>
+      <view class="retry-btn" bindtap="openModal">记录第一次</view>
+    </view>
+
+    <block wx:else>
+      <!-- 最新围度 -->
+      <view class="card">
+        <text class="card-title">最新数据 <text class="card-sub">{{latest.date}}</text></text>
+        <view class="m-grid">
+          <view class="m-cell" wx:for="{{fields}}" wx:key="key">
+            <text class="mv {{latest[item.key] ? '' : 'mv-empty'}}">{{latest[item.key] || '待测'}}</text>
+            <text class="ml">{{item.label}}</text>
+            <text class="mtier" wx:if="{{latest.tiers[item.key]}}"
+                  style="color:{{latest.tiers[item.key].color}};border-color:{{latest.tiers[item.key].color}}">{{latest.tiers[item.key].name}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 派生指标 -->
+      <view class="card">
+        <text class="card-title">身体比例</text>
+        <view class="d-row">
+          <text class="d-label">大腿 − 小腿</text>
+          <text class="d-val">{{latest.thigh_calf_diff || '—'}}</text>
+          <text class="d-ref">正常 18–22</text>
+        </view>
+        <view class="d-row">
+          <text class="d-label">臂 / 腿</text>
+          <text class="d-val">{{latest.arm_thigh_ratio || '—'}}</text>
+          <text class="d-ref">正常 0.58–0.62</text>
+        </view>
+        <view class="d-row">
+          <text class="d-label">大腿 − 腰</text>
+          <text class="d-val">{{latest.thigh_waist_diff || '—'}}</text>
+          <text class="d-ref">&gt;15 下半身占优</text>
+        </view>
+        <view class="d-row">
+          <text class="d-label">腰高比</text>
+          <text class="d-val">{{latest.waist_height_ratio || '—'}}</text>
+          <text class="d-ref">&lt;0.5 健康</text>
+        </view>
+      </view>
+
+      <!-- 历史 -->
+      <view class="card" wx:if="{{history.length}}">
+        <text class="card-title">历史记录 <text class="card-sub">{{history.length}} 次</text></text>
+        <view class="h-head">
+          <text class="h-c h-c-date">日期</text>
+          <text class="h-c">胸</text>
+          <text class="h-c">腰</text>
+          <text class="h-c">臀</text>
+          <text class="h-c">腿</text>
+          <text class="h-c">小腿</text>
+          <text class="h-c">二头</text>
+        </view>
+        <view class="h-row" wx:for="{{history}}" wx:key="date">
+          <text class="h-c h-c-date">{{item.date}}</text>
+          <text class="h-c {{item.chest_cm ? '' : 'h-null'}}">{{item.chest_cm || '·'}}</text>
+          <text class="h-c {{item.waist_cm ? '' : 'h-null'}}">{{item.waist_cm || '·'}}</text>
+          <text class="h-c {{item.hip_cm ? '' : 'h-null'}}">{{item.hip_cm || '·'}}</text>
+          <text class="h-c {{item.thigh_cm ? '' : 'h-null'}}">{{item.thigh_cm || '·'}}</text>
+          <text class="h-c {{item.calf_cm ? '' : 'h-null'}}">{{item.calf_cm || '·'}}</text>
+          <text class="h-c {{item.arm_cm ? '' : 'h-null'}}">{{item.arm_cm || '·'}}</text>
+        </view>
+      </view>
+
+      <view class="tip">二头屈臂用力 · 大腿站直放松 · 腰围自然呼气末</view>
+    </block>
+  </block>
+
+  <!-- 录入弹窗 -->
+  <view class="modal-overlay" wx:if="{{showModal}}" catchtap="closeModal">
+    <view class="modal-box" catchtap="noop">
+      <text class="modal-title">记录围度</text>
+      <view class="mf-row">
+        <text class="mf-label">日期</text>
+        <input class="mf-input" value="{{form.date}}" data-field="date" bindinput="onInput" placeholder="YYYY-MM-DD" />
+      </view>
+      <view class="mf-row" wx:for="{{fields}}" wx:key="key">
+        <text class="mf-label">{{item.label}}</text>
+        <input class="mf-input" type="digit" value="{{form[item.key]}}" data-field="{{item.key}}" bindinput="onInput" placeholder="{{item.hint}}" />
+      </view>
+      <text class="mf-tips">二头屈臂用力 · 大腿站直放松 · 腰围自然呼气末 · 单位 cm</text>
+      <view class="mf-actions">
+        <text class="mf-cancel" bindtap="closeModal">取消</text>
+        <text class="mf-save {{saving ? 'disabled' : ''}}" bindtap="save">保存</text>
+      </view>
+    </view>
+  </view>
+</scroll-view>

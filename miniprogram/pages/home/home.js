@@ -38,10 +38,6 @@ Page({
     calGrid: [], calMonths: [],
     catBars: [],
     lastWorkout: null,
-    latestMeasure: null,
-    measureHistory: [],
-    showMeasureModal: false,
-    measureForm: { date: '', waist_cm: '', hip_cm: '', thigh_cm: '', calf_cm: '', arm_cm: '', chest_cm: '' },
     lastWorkoutStr: '',
     lastWorkoutOffset: 0,
     lastWorkoutMore: true,
@@ -167,11 +163,10 @@ Page({
     this.setData({ loading: true })
     try {
       // 一次请求拿齐（后端 /api/fitness/home/ 已合并 stats/workouts/compound/last/tiers）
-      const [home, cycleRes, planRes, measureRes] = await Promise.all([
+      const [home, cycleRes, planRes] = await Promise.all([
         api.getHome({ limit: 200 }),
         api.getCycle(60).catch(() => null),
         api.getPlan().catch(() => null),
-        api.getMeasurements().catch(() => null),
       ])
       const _cycleMap = {}
       for (const c of ((cycleRes && cycleRes.days) || [])) _cycleMap[c.date] = c
@@ -231,8 +226,6 @@ Page({
         calGrid: calData.grid, calMonths: calData.months,
         calYear: calData.year, calMonth: calData.month,
         catBars, highlights, lastWorkout, lastWorkoutStr, overallTier,
-        latestMeasure: this.formatMeasure(measureRes && measureRes.latest),
-        measureHistory: ((measureRes && measureRes.results) || []).map(x => this.formatMeasure(x)),
         lastWorkoutOffset: 0, lastWorkoutMore: true,
         strengthChartFailed: !strengthLifts.length,
       })
@@ -243,74 +236,8 @@ Page({
     }
   },
 
-  // ── 身体围度 ──────────────────────────────────────────
-  // 数值统一 1 位小数（后端给 float，直接显示会变整数）
-  formatMeasure(m) {
-    if (!m) return null
-    const out = Object.assign({}, m)
-    for (const k of ['waist_cm', 'hip_cm', 'thigh_cm', 'calf_cm', 'arm_cm', 'chest_cm']) {
-      out[k] = (m[k] === null || m[k] === undefined) ? null : Number(m[k]).toFixed(1)
-    }
-    out.thigh_calf_diff = (m.thigh_calf_diff === null || m.thigh_calf_diff === undefined)
-      ? null : Number(m.thigh_calf_diff).toFixed(1)
-    out.thigh_waist_diff = (m.thigh_waist_diff === null || m.thigh_waist_diff === undefined)
-      ? null : Number(m.thigh_waist_diff).toFixed(1)
-    out.waist_height_ratio = (m.waist_height_ratio === null || m.waist_height_ratio === undefined)
-      ? null : Number(m.waist_height_ratio).toFixed(3)
-    out.arm_thigh_ratio = (m.arm_thigh_ratio === null || m.arm_thigh_ratio === undefined)
-      ? null : Number(m.arm_thigh_ratio).toFixed(3)
-    return out
-  },
-
-  openMeasureModal() {
-    const m = this.data.latestMeasure || {}
-    const t = new Date()
-    const ds = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
-    const fmt = v => (v === null || v === undefined) ? '' : String(v)
-    this.setData({
-      showMeasureModal: true,
-      measureForm: {
-        date: ds,
-        waist_cm: fmt(m.waist_cm), hip_cm: fmt(m.hip_cm), thigh_cm: fmt(m.thigh_cm),
-        calf_cm: fmt(m.calf_cm), arm_cm: fmt(m.arm_cm), chest_cm: fmt(m.chest_cm),
-      }
-    })
-  },
-
-  closeMeasureModal() {
-    this.setData({ showMeasureModal: false })
-  },
-
-  onMeasureInput(e) {
-    const field = e.currentTarget.dataset.field
-    this.setData({ [`measureForm.${field}`]: e.detail.value })
-  },
-
-  async saveMeasure() {
-    const f = this.data.measureForm
-    const payload = { date: f.date }
-    let filled = 0
-    for (const k of ['waist_cm', 'hip_cm', 'thigh_cm', 'calf_cm', 'arm_cm', 'chest_cm']) {
-      if (f[k] !== '' && f[k] !== null && f[k] !== undefined) {
-        payload[k] = Number(f[k])
-        filled++
-      }
-    }
-    if (!payload.date) return wx.showToast({ title: '请填日期', icon: 'none' })
-    if (!filled) return wx.showToast({ title: '至少填一项', icon: 'none' })
-    wx.showLoading({ title: '保存中' })
-    try {
-      await api.saveMeasurement(payload)
-      wx.hideLoading()
-      wx.showToast({ title: '已记录', icon: 'success' })
-      this.setData({ showMeasureModal: false })
-      const r = await api.getMeasurements()
-      this.setData({ latestMeasure: r.latest, measureHistory: r.results })
-    } catch (e) {
-      wx.hideLoading()
-      wx.showToast({ title: (e && e.error) || '保存失败', icon: 'none' })
-    }
-  },
+  // 身体围度（独立页）
+  goBody() { wx.navigateTo({ url: '/pages/body/body' }) },
 
   async fetchCompoundHistory() {
     const map = {}

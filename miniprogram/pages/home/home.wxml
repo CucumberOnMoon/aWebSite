@@ -78,6 +78,38 @@
 
     <view wx:else>
 
+      <!-- ①.5 身体围度 -->
+      <view class="card">
+        <view class="card-title-row">
+          <text class="card-title">📏 身体围度 <text class="card-sub" wx:if="{{latestMeasure}}">{{latestMeasure.date}}</text></text>
+          <text class="measure-add" bindtap="openMeasureModal">记录</text>
+        </view>
+        <block wx:if="{{latestMeasure}}">
+          <view class="measure-grid">
+            <view class="measure-cell">
+              <text class="mv {{latestMeasure.thigh_cm ? '' : 'mv-empty'}}">{{latestMeasure.thigh_cm || '待测'}}</text>
+              <text class="ml">大腿</text>
+            </view>
+            <view class="measure-cell">
+              <text class="mv {{latestMeasure.calf_cm ? '' : 'mv-empty'}}">{{latestMeasure.calf_cm || '待测'}}</text>
+              <text class="ml">小腿</text>
+            </view>
+            <view class="measure-cell">
+              <text class="mv {{latestMeasure.arm_cm ? '' : 'mv-empty'}}">{{latestMeasure.arm_cm || '待测'}}</text>
+              <text class="ml">二头</text>
+            </view>
+            <view class="measure-cell">
+              <text class="mv {{latestMeasure.waist_cm ? '' : 'mv-empty'}}">{{latestMeasure.waist_cm || '待测'}}</text>
+              <text class="ml">腰围</text>
+            </view>
+          </view>
+          <view class="measure-derive" wx:if="{{latestMeasure.thigh_calf_diff}}">
+            大腿−小腿 {{latestMeasure.thigh_calf_diff}} · 臂/腿 {{latestMeasure.arm_thigh_ratio}}<text wx:if="{{latestMeasure.waist_height_ratio}}"> · 腰高比 {{latestMeasure.waist_height_ratio}}</text>
+          </view>
+        </block>
+        <text wx:else class="text-muted measure-empty">还没有记录，点「记录」填第一次</text>
+      </view>
+
       <!-- ② 上次训练 -->
       <view class="card" wx:if="{{lastWorkout}}">
         <view class="card-title-row">
@@ -245,6 +277,25 @@
           </view>
         </view>
       </view>
+
+  <!-- 围度录入弹窗 -->
+  <view class="cal-overlay" wx:if="{{showMeasureModal}}" catchtap="closeMeasureModal">
+    <view class="measure-popup" catchtap="noop">
+      <text class="cal-popup-title">记录身体围度</text>
+      <view class="mf-row"><text class="mf-label">日期</text><input class="mf-input" value="{{measureForm.date}}" data-field="date" bindinput="onMeasureInput" placeholder="YYYY-MM-DD" /></view>
+      <view class="mf-row"><text class="mf-label">腰围</text><input class="mf-input" type="digit" value="{{measureForm.waist_cm}}" data-field="waist_cm" bindinput="onMeasureInput" placeholder="自然呼气末" /></view>
+      <view class="mf-row"><text class="mf-label">大腿</text><input class="mf-input" type="digit" value="{{measureForm.thigh_cm}}" data-field="thigh_cm" bindinput="onMeasureInput" placeholder="站直放松，最高处" /></view>
+      <view class="mf-row"><text class="mf-label">小腿</text><input class="mf-input" type="digit" value="{{measureForm.calf_cm}}" data-field="calf_cm" bindinput="onMeasureInput" placeholder="最粗处" /></view>
+      <view class="mf-row"><text class="mf-label">二头</text><input class="mf-input" type="digit" value="{{measureForm.arm_cm}}" data-field="arm_cm" bindinput="onMeasureInput" placeholder="屈臂用力" /></view>
+      <view class="mf-row"><text class="mf-label">胸围</text><input class="mf-input" type="digit" value="{{measureForm.chest_cm}}" data-field="chest_cm" bindinput="onMeasureInput" placeholder="选填" /></view>
+      <view class="mf-row"><text class="mf-label">臀围</text><input class="mf-input" type="digit" value="{{measureForm.hip_cm}}" data-field="hip_cm" bindinput="onMeasureInput" placeholder="选填" /></view>
+      <text class="mf-tips">二头屈臂用力 · 大腿站直放松 · 腰围自然呼气末 · 单位 cm</text>
+      <view class="mf-actions">
+        <text class="mf-cancel" bindtap="closeMeasureModal">取消</text>
+        <text class="mf-save" bindtap="saveMeasure">保存</text>
+      </view>
+    </view>
+  </view>
 
     </view>
   </view>

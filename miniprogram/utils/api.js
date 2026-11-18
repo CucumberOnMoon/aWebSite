@@ -104,6 +104,12 @@ function getCycleRange(from, to) {
   return request('GET', '/api/fitness/cycle/', { from: from, to: to })
 }
 
+// 身体围度（大腿/小腿/二头/腰围等）
+function getMeasurements() { return request('GET', '/api/fitness/measurements/') }
+function saveMeasurement(data) {
+  return request('POST', '/api/fitness/measurements/', Object.assign({ owner: getCurrentUser() }, data))
+}
+
 // 统计 & 训练
 function getStats() { return request('GET', '/api/fitness/stats/') }
 function getTiers() { return request('GET', '/api/fitness/tiers/') }
@@ -148,6 +154,7 @@ module.exports = {
   setCurrentUser, getCurrentUser, setOpenid, getOpenid,
   getUsers, getUnbound, wechatLogin, wechatBind,
   getPlan, savePlan, deletePlan, getCycle, getCycleRange,
+  getMeasurements, saveMeasurement,
   getStats, getTiers, getTiersLegend, getExercises, getHome,
   startWorkout, logSet, finishWorkout, getWorkouts, getLastWorkout,
   getSetHistory, getWorkoutSets, getExerciseGif, getExerciseDetail, timerNotify

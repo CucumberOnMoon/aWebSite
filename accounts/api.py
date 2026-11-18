@@ -1375,11 +1375,17 @@ def measurements(request):
     except ValueError:
         return Response({'error': 'date 格式需 YYYY-MM-DD'}, status=400)
 
+    # 部分更新：先读当天已有记录，未传的字段保留原值（不清空）
+    prev_rows = _run_sql(
+        f"SELECT * FROM body_measurements WHERE owner = '{owner}' AND date = DATE '{day}'"
+    ) or []
+    prev = prev_rows[0] if prev_rows else {}
+
     vals = {}
     for f in MEASURE_FIELDS:
         raw = request.data.get(f)
         if raw is None or raw == '':
-            vals[f] = None
+            vals[f] = _num(prev.get(f)) if prev else None
             continue
         try:
             n = float(raw)
@@ -1390,6 +1396,8 @@ def measurements(request):
         vals[f] = n
 
     note = _str(request.data.get('note'))
+    if note is None:
+        note = _str(prev.get('note')) if prev else None
     note_sql = "'" + note.replace("'", "''") + "'" if note else 'NULL'
 
     _run_workout_query(

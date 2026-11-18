@@ -67,25 +67,10 @@
       <!-- 派生指标 -->
       <view class="card">
         <text class="card-title">身体比例</text>
-        <view class="d-row">
-          <text class="d-label">大腿 − 小腿</text>
-          <text class="d-val">{{latest.thigh_calf_diff || '—'}}</text>
-          <text class="d-ref">正常 18–22</text>
-        </view>
-        <view class="d-row">
-          <text class="d-label">臂 / 腿</text>
-          <text class="d-val">{{latest.arm_thigh_ratio || '—'}}</text>
-          <text class="d-ref">正常 0.58–0.62</text>
-        </view>
-        <view class="d-row">
-          <text class="d-label">大腿 − 腰</text>
-          <text class="d-val">{{latest.thigh_waist_diff || '—'}}</text>
-          <text class="d-ref">&gt;15 下半身占优</text>
-        </view>
-        <view class="d-row">
-          <text class="d-label">腰高比</text>
-          <text class="d-val">{{latest.waist_height_ratio || '—'}}</text>
-          <text class="d-ref">&lt;0.5 健康</text>
+        <view class="d-row" wx:for="{{ratios}}" wx:key="key">
+          <text class="d-label">{{item.label}}</text>
+          <text class="d-val">{{latest[item.key] || '—'}}</text>
+          <text class="d-ref">{{item.ref}}</text>
         </view>
       </view>
 
@@ -94,25 +79,22 @@
         <text class="card-title">历史记录 <text class="card-sub">{{history.length}} 次</text></text>
         <view class="h-head">
           <text class="h-c h-c-date">日期</text>
+          <text class="h-c">肩</text>
           <text class="h-c">胸</text>
           <text class="h-c">腰</text>
           <text class="h-c">臀</text>
           <text class="h-c">腿</text>
           <text class="h-c">小腿</text>
-          <text class="h-c">二头</text>
+          <text class="h-c">臂</text>
         </view>
-        <view class="h-row" wx:for="{{history}}" wx:key="date">
-          <text class="h-c h-c-date">{{item.date}}</text>
-          <text class="h-c {{item.chest_cm ? '' : 'h-null'}}">{{item.chest_cm || '·'}}</text>
-          <text class="h-c {{item.waist_cm ? '' : 'h-null'}}">{{item.waist_cm || '·'}}</text>
-          <text class="h-c {{item.hip_cm ? '' : 'h-null'}}">{{item.hip_cm || '·'}}</text>
-          <text class="h-c {{item.thigh_cm ? '' : 'h-null'}}">{{item.thigh_cm || '·'}}</text>
-          <text class="h-c {{item.calf_cm ? '' : 'h-null'}}">{{item.calf_cm || '·'}}</text>
-          <text class="h-c {{item.arm_cm ? '' : 'h-null'}}">{{item.arm_cm || '·'}}</text>
+        <view class="h-row" wx:for="{{history}}" wx:key="date" wx:for-item="row">
+          <text class="h-c h-c-date">{{row.date}}</text>
+          <text class="h-c {{row[f.key] ? '' : 'h-null'}}"
+                wx:for="{{fields}}" wx:for-item="f" wx:key="key">{{row[f.key] || '·'}}</text>
         </view>
       </view>
 
-      <view class="tip">二头屈臂用力 · 大腿站直放松 · 腰围自然呼气末</view>
+      <view class="tip">肩围两肩峰最外点 · 胸围乳头水平 · 腰围自然呼气末 · 大腿站直放松 · 二头屈臂用力</view>
     </block>
   </block>
 </scroll-view>

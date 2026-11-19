@@ -1369,6 +1369,8 @@ def _derive_measures(rec, height_cm):
     return {
         'waist_height_ratio': (round(w / height_cm, 3) if (w and height_cm) else None),
         'thigh_waist_diff': (round(t - w, 1) if (t is not None and w is not None) else None),
+        # 腿腰比：大腿 ÷ 腰（≥1.00 腿比腰粗，力量型；≤0.70 腰明显粗于腿）
+        'thigh_waist_ratio': (round(t / w, 3) if (t and w) else None),
         'thigh_calf_diff': (round(t - c, 1) if (t is not None and c is not None) else None),
         'arm_thigh_ratio': (round(a / t, 3) if (a and t) else None),
         # 肩胸比：1.05-1.15 正常，>1.15 肩背发达
@@ -1387,7 +1389,7 @@ RATIO_SCORE_RULES = {
     'shoulder_waist_ratio': ('gte', 1.30, 1.00),
     'waist_hip_ratio': ('lte', 0.90, 1.00),
     'waist_height_ratio': ('lte', 0.50, 0.60),
-    'thigh_waist_diff': ('gte', 15.0, 5.0),
+    'thigh_waist_ratio': ('gte', 1.00, 0.70),
     'thigh_calf_diff': ('ideal', 20.0, 8.0),
     'arm_thigh_ratio': ('ideal', 0.60, 0.06),
 }
@@ -1396,7 +1398,7 @@ RATIO_LABELS = [
     ('shoulder_waist_ratio', '肩/腰'),
     ('waist_hip_ratio', '腰/臀'),
     ('waist_height_ratio', '腰/高'),
-    ('thigh_waist_diff', '腿-腰'),
+    ('thigh_waist_ratio', '腿/腰'),
     ('thigh_calf_diff', '腿-小腿'),
     ('arm_thigh_ratio', '臂/腿'),
 ]

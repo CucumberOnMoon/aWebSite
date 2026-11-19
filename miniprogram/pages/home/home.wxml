@@ -63,14 +63,7 @@
 
   <view wx:else>
 
-    <!-- ① 概览 -->
-    <view class="hero-section">
-      <view class="stat-row">
-        <view class="stat-card"><text class="num">{{totals.total_workouts}}</text><text class="label">训练</text></view>
-        <view class="stat-card"><text class="num">{{totals.total_sets}}</text><text class="label">组数</text></view>
-        <view class="stat-card"><text class="num">{{totals.volK}}k</text><text class="label">容量kg</text></view>
-      </view>
-    </view>
+    <!-- ① 概览（统计卡片已移除） -->
 
     <view wx:if="{{!hasData}}" class="empty-state">
       <text class="text-muted">暂无训练数据</text>

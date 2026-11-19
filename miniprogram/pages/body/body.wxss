@@ -71,6 +71,26 @@
 .r-val { font-size: 12px; color: #c9d1d9; font-weight: 600; }
 .r-null { color: #484f58; font-weight: 400; }
 
+/* 分析结论 */
+.an-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.an-head .card-title { margin-bottom: 0; }
+.an-date { font-size: 10px; color: #6e7681; }
+.an-conclusion {
+  display: block; font-size: 14px; color: #e6edf3; line-height: 1.7;
+  margin-bottom: 12px;
+}
+.an-focus {
+  background: rgba(88,166,255,0.08); border-left: 3px solid #58a6ff;
+  border-radius: 6px; padding: 10px 12px;
+}
+.an-focus-label {
+  display: block; font-size: 10px; color: #58a6ff;
+  letter-spacing: 1px; margin-bottom: 5px;
+}
+.an-focus-text { display: block; font-size: 13px; color: #c9d1d9; line-height: 1.6; }
+.an-empty-card { padding: 14px 16px; }
+.an-empty { font-size: 12px; color: #6e7681; }
+
 /* 围度网格 */
 .m-grid { display: flex; flex-wrap: wrap; }
 .m-cell { width: 33.33%; text-align: center; padding: 8px 0; }

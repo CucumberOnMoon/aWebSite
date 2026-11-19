@@ -76,6 +76,22 @@
         </view>
       </view>
 
+      <!-- 分析结论（由小黑生成，存 measurement_analysis 表） -->
+      <view class="card" wx:if="{{latest.analysis}}">
+        <view class="an-head">
+          <text class="card-title">📌 分析</text>
+          <text class="an-date" wx:if="{{latest.analysis.generated_at}}">{{latest.analysis.generated_at}}</text>
+        </view>
+        <text class="an-conclusion">{{latest.analysis.conclusion}}</text>
+        <view class="an-focus" wx:if="{{latest.analysis.focus}}">
+          <text class="an-focus-label">值得盯的目标</text>
+          <text class="an-focus-text">{{latest.analysis.focus}}</text>
+        </view>
+      </view>
+      <view class="card an-empty-card" wx:elif="{{latest}}">
+        <text class="an-empty">本次还没有分析结论</text>
+      </view>
+
       <!-- 历史 -->
       <view class="card" wx:if="{{history.length}}">
         <text class="card-title">历史记录 <text class="card-sub">{{history.length}} 次</text></text>

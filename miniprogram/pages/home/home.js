@@ -59,7 +59,7 @@ Page({
     calPlanPopup: null,
     calYear: 0, calMonth: 0,
     strengthTab: 'Push',
-    appVersion: '2.7.5',
+    appVersion: '2.7.6',
     // Timer
     timerActive: false,
     timerRemaining: 0,

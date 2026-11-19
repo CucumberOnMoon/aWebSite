@@ -33,6 +33,7 @@ Page({
     fields: FIELDS,
     ratios: RATIOS,
     latest: null,
+    radar: [],
     history: [],
   },
 
@@ -72,8 +73,9 @@ Page({
         loading: false,
         hasData: !!(latest || history.length),
         latest,
+        radar: (r.latest && r.latest.radar) || [],
         history,
-      })
+      }, () => this.drawRatios())
     } catch (e) {
       console.error('围度加载失败', e)
       this.setData({ loading: false, failed: true })
@@ -95,6 +97,82 @@ Page({
       out[k] = (m[k] === null || m[k] === undefined) ? null : Number(m[k]).toFixed(3)
     })
     return out
+  },
+
+  // ── 7 项身体比例雷达（值 = 后端给的 0-1 达标度）────
+  drawRatios() {
+    const data = this.data.radar || []
+    if (!data.length) return
+    wx.createSelectorQuery().in(this).select('#ratioRadar')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        const r = res && res[0]
+        if (!r || !r.node) return
+        const canvas = r.node
+        const ctx = canvas.getContext('2d')
+        const dpr = (wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2) || 2
+        const W = r.width, H = r.height
+        canvas.width = W * dpr
+        canvas.height = H * dpr
+        ctx.scale(dpr, dpr)
+        ctx.clearRect(0, 0, W, H)
+
+        const cx = W / 2, cy = H / 2
+        const R = Math.min(W, H) / 2 - 34
+        const n = data.length
+        const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n
+        const pt = (i, ratio) => [
+          cx + Math.cos(ang(i)) * R * ratio,
+          cy + Math.sin(ang(i)) * R * ratio,
+        ]
+
+        // 网格
+        ctx.strokeStyle = '#30363d'
+        ctx.lineWidth = 1
+        for (let ring = 1; ring <= 4; ring++) {
+          ctx.beginPath()
+          for (let i = 0; i < n; i++) {
+            const [x, y] = pt(i, ring / 4)
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+          }
+          ctx.closePath()
+          ctx.stroke()
+        }
+        for (let i = 0; i < n; i++) {
+          const [x, y] = pt(i, 1)
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke()
+        }
+
+        // 数据多边形（null 视为 0）
+        ctx.beginPath()
+        data.forEach((d, i) => {
+          const v = Math.max(0.04, Number(d.score) || 0)
+          const [x, y] = pt(i, v)
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+        })
+        ctx.closePath()
+        ctx.fillStyle = 'rgba(63,185,80,0.20)'
+        ctx.fill()
+        ctx.strokeStyle = '#3fb950'
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        // 点 + 标签
+        ctx.font = '9px sans-serif'
+        data.forEach((d, i) => {
+          const v = Math.max(0.04, Number(d.score) || 0)
+          const [x, y] = pt(i, v)
+          ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2)
+          ctx.fillStyle = d.score === null ? '#6e7681' : '#3fb950'
+          ctx.fill()
+
+          const [lx, ly] = pt(i, 1.2)
+          ctx.fillStyle = d.score === null ? '#484f58' : '#8b949e'
+          ctx.textAlign = Math.abs(lx - cx) < 4 ? 'center' : (lx > cx ? 'left' : 'right')
+          ctx.textBaseline = 'middle'
+          ctx.fillText(d.label, lx, ly)
+        })
+      })
   },
 
   // ── 用户下拉（与段位页一致）──────────────────

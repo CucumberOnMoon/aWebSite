@@ -64,13 +64,15 @@
         </view>
       </view>
 
-      <!-- 派生指标 -->
+      <!-- 身体比例（雷达） -->
       <view class="card">
-        <text class="card-title">身体比例</text>
-        <view class="d-row" wx:for="{{ratios}}" wx:key="key">
-          <text class="d-label">{{item.label}}</text>
-          <text class="d-val">{{latest[item.key] || '—'}}</text>
-          <text class="d-ref">{{item.ref}}</text>
+        <text class="card-title">身体比例 <text class="card-sub">7 项达标度 · 越靠外越好</text></text>
+        <canvas type="2d" id="ratioRadar" class="ratio-canvas"></canvas>
+        <view class="r-legend">
+          <view class="r-item" wx:for="{{radar}}" wx:key="key">
+            <text class="r-label">{{item.label}}</text>
+            <text class="r-val {{item.score === null ? 'r-null' : ''}}">{{item.value === null ? '待测' : item.value}}</text>
+          </view>
         </view>
       </view>
 

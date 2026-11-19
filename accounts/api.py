@@ -1380,6 +1380,48 @@ def _derive_measures(rec, height_cm):
     }
 
 
+# 7 个比值的「达标度」归一化（雷达图用）：0 = 最差，1 = 理想
+# ideal: 目标值 + 容差；gte: ≥target 满分 / ≤low 零分；lte: ≤target 满分 / ≥high 零分
+RATIO_SCORE_RULES = {
+    'shoulder_chest_ratio': ('ideal', 1.10, 0.10),
+    'shoulder_waist_ratio': ('gte', 1.30, 1.00),
+    'waist_hip_ratio': ('lte', 0.90, 1.00),
+    'waist_height_ratio': ('lte', 0.50, 0.60),
+    'thigh_waist_diff': ('gte', 15.0, 5.0),
+    'thigh_calf_diff': ('ideal', 20.0, 8.0),
+    'arm_thigh_ratio': ('ideal', 0.60, 0.06),
+}
+RATIO_LABELS = [
+    ('shoulder_chest_ratio', '肩/胸'),
+    ('shoulder_waist_ratio', '肩/腰'),
+    ('waist_hip_ratio', '腰/臀'),
+    ('waist_height_ratio', '腰/高'),
+    ('thigh_waist_diff', '腿-腰'),
+    ('thigh_calf_diff', '腿-小腿'),
+    ('arm_thigh_ratio', '臂/腿'),
+]
+
+
+def _ratio_scores(rec):
+    """把 7 个比值归一成 0-1 达标度，前端直接画雷达，不再算。"""
+    out = []
+    for key, label in RATIO_LABELS:
+        v = rec.get(key)
+        mode, target, tol = RATIO_SCORE_RULES[key]
+        if v is None:
+            out.append({'key': key, 'label': label, 'value': None, 'score': None})
+            continue
+        if mode == 'ideal':
+            s = 1 - abs(v - target) / tol
+        elif mode == 'gte':
+            s = (v - tol) / (target - tol) if target != tol else 1.0
+        else:  # lte
+            s = (tol - v) / (tol - target) if tol != target else 1.0
+        out.append({'key': key, 'label': label, 'value': v,
+                    'score': round(max(0.0, min(1.0, s)), 3)})
+    return out
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def measurements(request):
@@ -1420,6 +1462,7 @@ def measurements(request):
             rec['note'] = _str(r.get('note'))
             rec.update(_derive_measures(rec, height))
             rec['tiers'] = _measure_tiers(rec, height, sex)
+            rec['radar'] = _ratio_scores(rec)
             out.append(rec)
         return Response({
             'count': len(out),
